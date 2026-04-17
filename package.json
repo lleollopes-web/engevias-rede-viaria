@@ -1,6 +1,6 @@
 {
   "name": "engevias-rede-viaria",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Monitoramento da Rede Viária - Ceará - Engevias",
   "main": "server.js",
   "scripts": {
