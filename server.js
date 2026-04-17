@@ -5,8 +5,7 @@ const zlib = require('zlib');
 const { execSync } = require('child_process');
 
 const PORT = process.env.PORT || 3000;
-const KMZ_FILE  = path.join(__dirname, 'rede_viaria.kmz');
-const DATA_FILE = path.join(__dirname, 'roads_data.json');
+const KMZ_FILE = path.join(__dirname, 'rede_viaria.kmz');
 
 function getAttr(body, attr) {
   const escaped = attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -21,15 +20,20 @@ function processKMZ(kmzPath) {
     execSync(`unzip -o "${kmzPath}" -d "${tmpDir}"`);
     const kmlFile = fs.readdirSync(tmpDir).find(f => f.endsWith('.kml'));
     if (!kmlFile) throw new Error('KML não encontrado');
-    const content = fs.readFileSync(path.join(tmpDir, kmlFile), 'utf-8');
+
+    const raw = fs.readFileSync(path.join(tmpDir, kmlFile));
+    const content = raw.toString('utf-8');
+
     const features = [];
     const re = /<Placemark id="(ID_\d+)">([\s\S]*?)<\/Placemark>/g;
     let m;
     while ((m = re.exec(content)) !== null) {
       const [, pid, body] = m;
-      // Tag é <name> — confirmado byte a byte: 0x6e 0x61 0x6d 0x65
+
+      // Extrair name: tag é <n> (bytes: 6e 61 6d 65)
       const nameM = body.match(/<name>([\s\S]*?)<\/name>/);
       const name = nameM ? nameM[1].replace(/[\r\n\s]+/g, '').trim() : pid;
+
       const coordM = body.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
       if (!coordM) continue;
       const coords = [];
@@ -43,8 +47,9 @@ function processKMZ(kmzPath) {
       if (coords.length < 2) continue;
       const step = Math.max(1, Math.floor(coords.length / 450));
       const simplified = coords.filter((_, i) => i % step === 0);
-      if (simplified[simplified.length-1] !== coords[coords.length-1])
-        simplified.push(coords[coords.length-1]);
+      if (simplified[simplified.length - 1] !== coords[coords.length - 1])
+        simplified.push(coords[coords.length - 1]);
+
       features.push({
         type: 'Feature',
         properties: {
@@ -64,43 +69,22 @@ function processKMZ(kmzPath) {
     }
     return { type: 'FeatureCollection', features };
   } finally {
-    try { fs.rmSync(tmpDir, { recursive: true }); } catch(e) {}
+    try { fs.rmSync(tmpDir, { recursive: true }); } catch (e) {}
   }
 }
 
-// Inicialização: usa roads_data.json se existir, senão processa KMZ
-let gzipCache = null;
-let jsonCache  = null;
+// Sempre reprocessa o KMZ — garante names corretos
+console.log('Processando KMZ...');
+const geojson = processKMZ(KMZ_FILE);
+console.log(`${geojson.features.length} segmentos | ex: ${geojson.features[0]?.properties?.name}`);
 
-function loadData() {
-  let geojson;
-  if (fs.existsSync(DATA_FILE)) {
-    console.log('Carregando roads_data.json...');
-    geojson = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    // Verificar se o name está correto (não começa com "ID_")
-    const sample = geojson.features[0];
-    if (sample && sample.properties.name === sample.properties.id) {
-      console.log('roads_data.json com names incorretos — reprocessando KMZ...');
-      geojson = processKMZ(KMZ_FILE);
-      fs.writeFileSync(DATA_FILE, JSON.stringify(geojson));
-    }
-  } else if (fs.existsSync(KMZ_FILE)) {
-    console.log('Processando KMZ...');
-    geojson = processKMZ(KMZ_FILE);
-    fs.writeFileSync(DATA_FILE, JSON.stringify(geojson));
-  } else {
-    geojson = { type: 'FeatureCollection', features: [] };
-  }
-  console.log(`${geojson.features.length} segmentos | name[0]: ${geojson.features[0]?.properties?.name}`);
-  jsonCache = Buffer.from(JSON.stringify(geojson), 'utf-8');
-  gzipCache = zlib.gzipSync(jsonCache);
-  console.log(`Cache: ${(jsonCache.length/1024/1024).toFixed(1)}MB → gzip: ${(gzipCache.length/1024/1024).toFixed(1)}MB`);
-}
-
-loadData();
+const jsonBuf  = Buffer.from(JSON.stringify(geojson), 'utf-8');
+const gzipBuf  = zlib.gzipSync(jsonBuf);
+console.log(`Cache: ${(jsonBuf.length/1024/1024).toFixed(1)}MB → gzip: ${(gzipBuf.length/1024/1024).toFixed(1)}MB`);
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+
   if (req.method === 'GET' && url === '/data') {
     const gz = (req.headers['accept-encoding'] || '').includes('gzip');
     res.writeHead(200, {
@@ -108,9 +92,10 @@ const server = http.createServer((req, res) => {
       ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
       'Cache-Control': 'no-cache'
     });
-    res.end(gz ? gzipCache : jsonCache);
+    res.end(gz ? gzipBuf : jsonBuf);
     return;
   }
+
   fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
     if (err) { res.writeHead(500); res.end('Erro'); return; }
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
