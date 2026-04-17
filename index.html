@@ -323,6 +323,9 @@
         <div class="filter-group">
           <select id="filter-rodovia"><option value="">Todas as rodovias</option></select>
         </div>
+        <div class="filter-group" id="filter-name-group" style="display:none;">
+          <select id="filter-name"><option value="">Todos os segmentos</option></select>
+        </div>
         <div class="filter-group">
           <select id="filter-tipo">
             <option value="">Todos os tipos de pavimento</option>
@@ -334,6 +337,15 @@
             <option value="AAUF">AAUF</option>
             <option value="POL">POL — Poliédrico</option>
             <option value="INT">INT — Intertravado</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <select id="filter-jurisdicao">
+            <option value="">Todas as jurisdições</option>
+            <option value="ESTADUAL">Estadual</option>
+            <option value="ESTADUAL COINCIDENTE">Estadual Coincidente</option>
+            <option value="ACESSO ESTADUAL">Acesso Estadual</option>
+            <option value="FEDERAL">Federal</option>
           </select>
         </div>
       </div>
@@ -411,6 +423,24 @@ let map, layerGroup, layerMap={}, selectedId=null;
 let activeFilters = { situacao: new Set(Object.keys(SITUACAO_CONFIG)), rodovia:'', tipo:'', search:'' };
 const allFeatures = GEOJSON.features;
 
+function updateNameFilter() {
+  const r = document.getElementById('filter-rodovia').value;
+  const sel = document.getElementById('filter-name');
+  const group = document.getElementById('filter-name-group');
+  sel.innerHTML = '<option value="">Todos os segmentos</option>';
+  if (!r) { group.style.display='none'; return; }
+  group.style.display='block';
+  const names = allFeatures
+    .filter(f => f.properties.rodovia === r)
+    .map(f => f.properties.id)
+    .sort();
+  names.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+}
+
 function initApp() {
   map = L.map('map', { center:[-5.0,-39.3], zoom:7 });
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
@@ -426,8 +456,13 @@ function initApp() {
 
   buildLegend();
   document.getElementById('search-input').addEventListener('input', applyFilters);
-  document.getElementById('filter-rodovia').addEventListener('change', applyFilters);
+  document.getElementById('filter-rodovia').addEventListener('change', () => {
+    updateNameFilter();
+    applyFilters();
+  });
+  document.getElementById('filter-name').addEventListener('change', applyFilters);
   document.getElementById('filter-tipo').addEventListener('change', applyFilters);
+  document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   applyFilters();
 }
@@ -456,12 +491,16 @@ function toggleSit(key,el) {
 function applyFilters() {
   const s=document.getElementById('search-input').value.toLowerCase();
   const r=document.getElementById('filter-rodovia').value;
+  const n=document.getElementById('filter-name').value;
   const t=document.getElementById('filter-tipo').value;
+  const j=document.getElementById('filter-jurisdicao').value;
   const vis = allFeatures.filter(f=>{
     const p=f.properties;
     if(!activeFilters.situacao.has(p.situacao||'PAV')) return false;
     if(r && p.rodovia!==r) return false;
+    if(n && p.id!==n) return false;
     if(t && p.tipo_pav!==t) return false;
+    if(j && p.jurisdicao!==j) return false;
     if(s){ const tx=`${p.id} ${p.rodovia} ${p.desc_ini} ${p.desc_fim}`.toLowerCase(); if(!tx.includes(s)) return false; }
     return true;
   });
