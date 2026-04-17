@@ -408,6 +408,19 @@ const SITUACAO_CONFIG = {
   EOP:  { label:'Em Obra (Esq.)',     color:'#9333ea', width:3.0 },
 };
 
+// Cor baseada em jurisdição (modo padrão do mapa)
+const JURISDICAO_CONFIG = {
+  'ESTADUAL':              { color:'#dc2626', width:2.0 },
+  'ESTADUAL COINCIDENTE':  { color:'#dc2626', width:2.0 },
+  'ACESSO ESTADUAL':       { color:'#dc2626', width:2.0 },
+  'FEDERAL':               { color:'#16a34a', width:2.5 },
+};
+
+function getLineStyle(p) {
+  const j = (p.jurisdicao || '').toUpperCase().trim();
+  return JURISDICAO_CONFIG[j] || { color:'#94a3b8', width:1.8 };
+}
+
 const USERS = { engevias: '0101' };
 
 // ---- AUTH ----
@@ -545,7 +558,7 @@ function renderMap(features) {
   layerGroup.clearLayers(); layerMap={};
   features.forEach(f=>{
     const p=f.properties;
-    const cfg=SITUACAO_CONFIG[p.situacao]||SITUACAO_CONFIG.PAV;
+    const cfg=getLineStyle(p);
     const line=L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
       {color:cfg.color, weight:cfg.width, opacity:0.85, smoothFactor:1});
     line.on('click',()=>showInfo(p,line));
@@ -562,6 +575,7 @@ function renderList(features) {
   features.slice(0,200).forEach(f=>{
     const p=f.properties;
     const cfg=SITUACAO_CONFIG[p.situacao]||SITUACAO_CONFIG.PAV;
+  const jcfg=getLineStyle(p);
     const d=document.createElement('div');
     d.className='seg-item'+(p.id===selectedId?' selected':'');
     d.innerHTML=`
@@ -600,6 +614,7 @@ function updateStats(vis) {
 
 function showInfo(p) {
   const cfg=SITUACAO_CONFIG[p.situacao]||SITUACAO_CONFIG.PAV;
+  const jcfg=getLineStyle(p);
   document.getElementById('info-title').textContent=p.rodovia||'—';
   document.getElementById('info-id').textContent=p.name || p.id;
   const rows=[
