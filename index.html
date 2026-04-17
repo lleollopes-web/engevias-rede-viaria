@@ -300,31 +300,40 @@
 
   /* Diagrama LVC */
   #lvc-diagram {
-    display:none; position:fixed; bottom:0; left:260px; right:0; z-index:900;
+    display:none; position:fixed; bottom:0; left:320px; right:0; z-index:900;
     background:#1a2940; border-top:2px solid #2a8fa0;
-    padding:10px 16px 8px; box-shadow:0 -4px 20px rgba(0,0,0,0.25);
+    padding:8px 14px 6px; box-shadow:0 -4px 20px rgba(0,0,0,0.3);
   }
   #lvc-diagram.active { display:block; }
   .diag-header {
     display:flex; justify-content:space-between; align-items:center;
-    margin-bottom:6px;
+    margin-bottom:4px;
   }
-  .diag-title { color:#fff; font-family:'Inter Tight',sans-serif; font-size:12px; font-weight:700; letter-spacing:0.5px; }
-  .diag-close { background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; font-size:16px; line-height:1; padding:0; }
+  .diag-title { color:#7dd3f0; font-family:'Inter Tight',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.5px; }
+  .diag-close { background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:14px; line-height:1; padding:0; }
   .diag-close:hover { color:#fff; }
-  .diag-row { display:flex; align-items:center; margin-bottom:4px; gap:6px; }
-  .diag-label { color:rgba(255,255,255,0.6); font-size:10px; font-weight:600; width:22px; flex-shrink:0; }
+  .diag-row { display:flex; align-items:center; margin-bottom:3px; gap:5px; }
+  .diag-label { color:rgba(255,255,255,0.5); font-size:9px; font-weight:700; width:18px; flex-shrink:0; text-align:right; }
   .diag-track { flex:1; display:flex; border-radius:2px; overflow:hidden; }
-  .diag-block { cursor:pointer; transition:opacity 0.15s; border-right:1px solid rgba(0,0,0,0.15); }
+  .diag-block { cursor:pointer; transition:opacity 0.15s; }
   .diag-block:hover { opacity:0.7; }
-  .diag-block:last-child { border-right:none; }
-  .diag-year-group { margin-bottom:6px; display:flex; align-items:flex-start; gap:8px; }
+  .diag-year-group { margin-bottom:4px; display:flex; align-items:flex-start; gap:6px; }
   .diag-year-tag {
-    flex-shrink:0; background:#2a8fa0; color:#fff;
-    font-size:10px; font-weight:700; padding:2px 6px; border-radius:3px;
-    margin-top:2px; letter-spacing:0.5px; width:34px; text-align:center;
+    flex-shrink:0; background:#1e7fa0; color:#fff;
+    font-size:9px; font-weight:700; padding:1px 5px; border-radius:2px;
+    margin-top:2px; letter-spacing:0.3px; width:30px; text-align:center;
   }
   .diag-tracks { flex:1; }
+  .diag-xaxis {
+    display:flex; margin-left:24px; margin-top:3px;
+    border-top:1px solid rgba(255,255,255,0.15); padding-top:2px;
+  }
+  .diag-xtick { color:rgba(255,255,255,0.35); font-size:8px; flex:1; text-align:left; }
+  .diag-xtick:last-child { text-align:right; }
+
+  @media (max-width:768px) {
+    #lvc-diagram { left:0; }
+  }
 
   /* Filtros no modo LVC — mostrar acima do painel LVC */
   #lvc-filters { padding:12px 16px; border-bottom:1px solid var(--border); display:none; }
@@ -332,25 +341,25 @@
 
   /* Responsivo mobile */
   @media (max-width: 768px) {
-    .header { height:52px; padding:0 12px; gap:10px; }
-    .header-title { font-size:14px; }
+    .header { height:48px; padding:0 10px; gap:8px; flex-wrap:wrap; }
+    .header-title { font-size:13px; }
     .header-subtitle { display:none; }
     .header-stats { display:none; }
-    .sidebar {
-      width: 100%;
-      max-width: 100%;
-      height: 42vh;
-      border-right: none;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .main-layout { flex-direction: column; }
-    #map { min-height: 58vh; }
-    .info-panel { width: calc(100% - 32px); right: 16px; bottom: 16px; }
-    .segments-list { max-height: 120px; }
-    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap:6px; padding:10px; }
-    .lvc-ano-btn { flex:1; min-width:80px; padding:10px 8px; font-size:14px; }
     .header-sep { display:none; }
+    .main-layout { flex-direction:column; overflow:auto; }
+    .sidebar {
+      width:100%; max-width:100%;
+      height:auto; max-height:45vh;
+      border-right:none; border-bottom:1px solid var(--border);
+      overflow-y:auto; flex-shrink:0; order:1;
+    }
+    #map { min-height:55vh; flex:1; order:2; }
+    .info-panel { width:calc(100% - 24px); right:12px; bottom:12px; }
+    .segments-list { max-height:100px; }
+    .lvc-ano-btns { flex-direction:row; flex-wrap:wrap; gap:6px; padding:10px; }
+    .lvc-ano-btn { flex:1; min-width:80px; padding:8px 6px; font-size:13px; }
+    .lvc-panel { max-height:40vh; overflow-y:auto; }
+    #lvc-diagram { left:0; right:0; max-height:35vw; overflow:hidden; }
   }
 
   /* Scrollbar */
@@ -932,6 +941,22 @@ function showDiagram(name) {
     if (segsS.length) makeTrack(segsS, 'S');
     content.appendChild(group);
   });
+
+  // Eixo X com marcações de distância
+  const maxKmLabel = maxKm / 1000;
+  const xaxis = document.createElement('div');
+  xaxis.className = 'diag-xaxis';
+  // Determinar intervalo: <5km=500m, <20km=2km, <50km=5km, >=50km=10km
+  const interval = maxKmLabel < 5 ? 0.5 : maxKmLabel < 20 ? 2 : maxKmLabel < 50 ? 5 : 10;
+  const ticks = Math.floor(maxKmLabel / interval);
+  for (let i = 0; i <= ticks; i++) {
+    const tick = document.createElement('div');
+    tick.className = 'diag-xtick';
+    const km = (i * interval).toFixed(interval < 1 ? 1 : 0);
+    tick.textContent = km + 'km';
+    xaxis.appendChild(tick);
+  }
+  content.appendChild(xaxis);
 
   diagram.classList.add('active');
 }
