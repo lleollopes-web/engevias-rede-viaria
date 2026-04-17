@@ -218,7 +218,7 @@
   .badge-info { background:var(--surface2); color:var(--text2); border:1px solid var(--border); }
 
   /* Map */
-  #map { flex:1; }
+  #map { flex:1; width:100%; height:100%; }
 
   /* Info Panel */
   .info-panel {
@@ -347,7 +347,7 @@
       <div class="segments-list" id="segments-list"></div>
     </div>
 
-    <div style="flex:1;position:relative;">
+    <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
@@ -417,6 +417,7 @@ function initApp() {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   }).addTo(map);
   layerGroup = L.layerGroup().addTo(map);
+  setTimeout(() => { map.invalidateSize(); }, 200);
 
   // Rodovias
   const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
