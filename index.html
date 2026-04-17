@@ -169,6 +169,19 @@
 
   /* Legend */
   .legend-items { display:flex; flex-direction:column; gap:4px; }
+  .collapsible-header {
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; user-select:none; padding:4px 2px;
+    border-radius:6px; transition:background 0.15s;
+  }
+  .collapsible-header:hover { background:var(--surface2); padding:4px 6px; margin:0 -6px; }
+  .collapsible-arrow {
+    font-size:11px; color:var(--text3); transition:transform 0.2s;
+    width:16px; text-align:center;
+  }
+  .collapsible-arrow.open { transform:rotate(90deg); }
+  .collapsible-body { overflow:hidden; transition:max-height 0.3s ease, opacity 0.2s; max-height:0; opacity:0; }
+  .collapsible-body.open { max-height:400px; opacity:1; margin-top:8px; }
   .legend-item {
     display:flex; align-items:center; gap:10px;
     padding:8px 10px; border-radius:8px; cursor:pointer;
@@ -352,8 +365,13 @@
       </div>
 
       <div class="sidebar-section">
-        <div class="sidebar-label">Situação (clique para filtrar)</div>
-        <div class="legend-items" id="legend-items"></div>
+        <div class="collapsible-header" onclick="toggleLegend()">
+          <span class="sidebar-label" style="margin-bottom:0">Situação (clique para filtrar)</span>
+          <span class="collapsible-arrow" id="legend-arrow">▶</span>
+        </div>
+        <div class="collapsible-body" id="legend-body">
+          <div class="legend-items" id="legend-items"></div>
+        </div>
       </div>
 
       <div class="list-header" id="list-header">— segmentos</div>
@@ -474,6 +492,13 @@ async function initApp() {
   document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   applyFilters();
+}
+
+function toggleLegend() {
+  const body = document.getElementById('legend-body');
+  const arrow = document.getElementById('legend-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
 }
 
 function buildLegend() {
