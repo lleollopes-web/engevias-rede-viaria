@@ -274,13 +274,13 @@
   .leaflet-control-attribution { font-size:10px; }
 
   /* LVC Panel */
-  .lvc-panel { display:none; flex-direction:column; height:100%; }
+  .lvc-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   .lvc-panel.active { display:flex; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
     padding:12px 16px; border-radius:10px; border:2px solid var(--border);
-    background:var(--surface); cursor:pointer; font-family:'Inter',sans-serif;
-    font-size:15px; font-weight:600; color:var(--text2); text-align:left;
+    background:#fff; cursor:pointer; font-family:'Inter',sans-serif;
+    font-size:15px; font-weight:700; color:#1a2940; text-align:left;
     transition:all 0.2s; display:flex; justify-content:space-between; align-items:center;
   }
   .lvc-ano-btn:hover { border-color:var(--teal); color:var(--teal); background:#f0f8fb; }
@@ -344,7 +344,7 @@
     <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
       <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 6px;">
         <span style="font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">MODO</span>
-        <select id="modo-select" onchange="setModo(this.value)" style="background:transparent;border:none;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;">
+        <select id="modo-select" onchange="setModo(this.value)" style="background:#fff;border:none;color:#1a2940;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;border-radius:4px;padding:2px 4px;">
           <option value="jurisdicao">Jurisdição</option>
           <option value="lvc">Condição LVC</option>
         </select>
@@ -412,7 +412,7 @@
       <div class="list-header" id="list-header">— segmentos</div>
       <div class="segments-list" id="segments-list"></div>
 
-      <!-- Painel LVC -->
+      <!-- Painel LVC (com scroll) -->
       <div class="lvc-panel" id="lvc-panel">
         <div style="padding:16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:4px">Condição do LVC</div>
@@ -738,7 +738,7 @@ function buildAnoBtns() {
     const btn = document.createElement('button');
     btn.className = 'lvc-ano-btn';
     btn.dataset.ano = ano;
-    btn.innerHTML = '<span>' + ano + '</span><span class="btn-label">Clique para visualizar</span>';
+    btn.innerHTML = '<span style="font-size:16px">' + ano + '</span><span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>';
     btn.onclick = () => selectAno(ano);
     container.appendChild(btn);
   });
