@@ -298,6 +298,45 @@
   .lvc-stat-label { color:var(--text3); }
   .lvc-stat-val { font-weight:600; }
 
+  /* Diagrama LVC */
+  #lvc-diagram {
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:900;
+    background:#1a2940; border-top:2px solid #2a8fa0;
+    padding:14px 20px 10px; box-shadow:0 -4px 20px rgba(0,0,0,0.25);
+    max-height:220px;
+  }
+  #lvc-diagram.active { display:block; }
+  .diag-header {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:10px;
+  }
+  .diag-title { color:#fff; font-family:'Inter Tight',sans-serif; font-size:14px; font-weight:700; letter-spacing:0.5px; }
+  .diag-close { background:none; border:none; color:rgba(255,255,255,0.5); cursor:pointer; font-size:18px; line-height:1; }
+  .diag-close:hover { color:#fff; }
+  .diag-row { display:flex; align-items:center; margin-bottom:6px; gap:8px; }
+  .diag-label { color:rgba(255,255,255,0.7); font-size:11px; font-weight:600; width:28px; flex-shrink:0; letter-spacing:0.5px; }
+  .diag-track { flex:1; height:22px; display:flex; border-radius:3px; overflow:hidden; position:relative; }
+  .diag-block { height:100%; cursor:pointer; transition:opacity 0.15s; border-right:1px solid rgba(0,0,0,0.2); }
+  .diag-block:hover { opacity:0.75; }
+  .diag-block:last-child { border-right:none; }
+  .diag-year-label { color:rgba(255,255,255,0.5); font-size:10px; width:36px; flex-shrink:0; text-align:center; font-weight:600; }
+  .diag-year-group { margin-bottom:8px; }
+  .diag-year-tag {
+    display:inline-block; background:#2a8fa0; color:#fff;
+    font-size:10px; font-weight:700; padding:2px 8px; border-radius:3px;
+    margin-bottom:4px; letter-spacing:0.5px;
+  }
+  .diag-tooltip {
+    position:absolute; background:#0d2137; color:#fff; font-size:11px;
+    padding:4px 8px; border-radius:4px; pointer-events:none;
+    white-space:nowrap; z-index:999; border:1px solid #2a8fa0;
+    transform:translateX(-50%); bottom:28px;
+  }
+
+  /* Filtros no modo LVC — mostrar acima do painel LVC */
+  #lvc-filters { padding:12px 16px; border-bottom:1px solid var(--border); display:none; }
+  #lvc-filters.active { display:block; }
+
   /* Responsivo mobile */
   @media (max-width: 768px) {
     .header { height:52px; padding:0 12px; gap:10px; }
@@ -437,9 +476,22 @@
 
       <!-- Painel LVC (com scroll) -->
       <div class="lvc-panel" id="lvc-panel">
-        <div style="padding:16px;border-bottom:1px solid var(--border);">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:4px">Condição do LVC</div>
           <div style="font-size:12px;color:var(--text3)">Selecione o ano para visualizar</div>
+        </div>
+        <div id="lvc-filters" class="active">
+          <div class="sidebar-label" style="margin-bottom:8px">Filtrar segmento</div>
+          <div class="filter-group">
+            <select id="lvc-filter-rod" onchange="lvcFilterRod()">
+              <option value="">Todas as rodovias</option>
+            </select>
+          </div>
+          <div class="filter-group" id="lvc-name-group" style="display:none;">
+            <select id="lvc-filter-name" onchange="lvcFilterName()">
+              <option value="">Todos os segmentos</option>
+            </select>
+          </div>
         </div>
 
         <div class="lvc-ano-btns" id="lvc-ano-btns">
@@ -597,6 +649,7 @@ async function initApp() {
   document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   applyFilters();
+  initLvcFilters();
 }
 
 function toggleLegend() {
@@ -731,6 +784,149 @@ function closeInfo() {
   selectedId=null;
 }
 
+// ── Filtros no modo LVC ──────────────────────────────────────────────────────
+let lvcSelectedRod = '';
+let lvcSelectedName = '';
+
+function initLvcFilters() {
+  // Popular rodovias a partir do roads_data
+  const sel = document.getElementById('lvc-filter-rod');
+  const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
+  rods.forEach(r => {
+    const o = document.createElement('option');
+    o.value = r; o.textContent = r; sel.appendChild(o);
+  });
+}
+
+function lvcFilterRod() {
+  lvcSelectedRod = document.getElementById('lvc-filter-rod').value;
+  lvcSelectedName = '';
+  const nameGroup = document.getElementById('lvc-name-group');
+  const nameSel = document.getElementById('lvc-filter-name');
+  nameSel.innerHTML = '<option value="">Todos os segmentos</option>';
+  if (lvcSelectedRod && lvcData && currentAno) {
+    nameGroup.style.display = 'block';
+    // Pegar names únicos do LVC para essa rodovia
+    const features = lvcData.data[currentAno] || [];
+    const matched = allFeatures.filter(f => f.properties.rodovia === lvcSelectedRod);
+    const names = [...new Set(matched.map(f => f.properties.name).filter(Boolean))].sort();
+    names.forEach(n => {
+      const o = document.createElement('option');
+      o.value = n; o.textContent = n; nameSel.appendChild(o);
+    });
+  } else {
+    nameGroup.style.display = 'none';
+  }
+  renderLVCFiltered();
+  closeDiagram();
+}
+
+function lvcFilterName() {
+  lvcSelectedName = document.getElementById('lvc-filter-name').value;
+  renderLVCFiltered();
+  if (lvcSelectedName) showDiagram(lvcSelectedName);
+  else closeDiagram();
+}
+
+function renderLVCFiltered() {
+  if (!lvcData || !currentAno) return;
+  if (!lvcLayerGroup) lvcLayerGroup = L.layerGroup().addTo(map);
+  lvcLayerGroup.clearLayers();
+  let features = lvcData.data[currentAno] || [];
+  if (lvcSelectedRod) {
+    const matched = new Set(
+      allFeatures.filter(f => f.properties.rodovia === lvcSelectedRod).map(f => f.properties.name)
+    );
+    features = features.filter(f => matched.has(f.properties.trecho));
+  }
+  if (lvcSelectedName) {
+    // Mostrar só D0 e E0 do name selecionado
+    const base = lvcSelectedName.slice(0,-2);
+    features = features.filter(f => f.properties.trecho.startsWith(base));
+    // Zoom no segmento
+    const roadFeat = allFeatures.find(f => f.properties.name === lvcSelectedName);
+    if (roadFeat) {
+      const coords = roadFeat.geometry.coordinates.map(c=>[c[1],c[0]]);
+      map.fitBounds(L.polyline(coords).getBounds(), {padding:[60,60]});
+    }
+  }
+  features.forEach(f => {
+    const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
+    const line = L.polyline(
+      f.geometry.coordinates.map(c=>[c[1],c[0]]),
+      {color, weight:4, opacity:0.95, smoothFactor:1}
+    );
+    line.bindTooltip(
+      '<b>'+f.properties.trecho+'</b><br>'+
+      'km '+(f.properties.km_ini/1000).toFixed(2)+' – '+(f.properties.km_fim/1000).toFixed(2)+'<br>'+
+      '<span style="color:'+color+';font-weight:700">'+f.properties.conceito+'</span>',
+      {sticky:true}
+    );
+    line.addTo(lvcLayerGroup);
+  });
+}
+
+// ── Diagrama Linear ───────────────────────────────────────────────────────────
+function showDiagram(name) {
+  if (!lvcData) return;
+  const base = name.slice(0,-2);
+  const diagram = document.getElementById('lvc-diagram');
+  const content = document.getElementById('diag-content');
+  document.getElementById('diag-title').textContent = 'LVC — ' + name + ' — Série Histórica';
+  content.innerHTML = '';
+
+  lvcData.anos.forEach(ano => {
+    const anoLabel = ano === '025' ? '2025' : ano;
+    const features = lvcData.data[ano] || [];
+    const segsD = features.filter(f => f.properties.trecho === base+'D0').sort((a,b)=>a.properties.km_ini-b.properties.km_ini);
+    const segsE = features.filter(f => f.properties.trecho === base+'E0').sort((a,b)=>a.properties.km_ini-b.properties.km_ini);
+    const segsS = features.filter(f => f.properties.trecho === base+'S0').sort((a,b)=>a.properties.km_ini-b.properties.km_ini);
+    const hasData = segsD.length || segsE.length || segsS.length;
+    if (!hasData) return;
+
+    const group = document.createElement('div');
+    group.className = 'diag-year-group';
+    const tag = document.createElement('div');
+    tag.className = 'diag-year-tag';
+    tag.textContent = anoLabel;
+    group.appendChild(tag);
+
+    function makeTrack(segs, label) {
+      if (!segs.length) return;
+      const total = segs[segs.length-1].properties.km_fim;
+      const row = document.createElement('div');
+      row.className = 'diag-row';
+      const lbl = document.createElement('div');
+      lbl.className = 'diag-label'; lbl.textContent = label;
+      const track = document.createElement('div');
+      track.className = 'diag-track';
+      segs.forEach(seg => {
+        const w = ((seg.properties.km_fim - seg.properties.km_ini) / total * 100).toFixed(2);
+        const color = LVC_COLORS[seg.properties.conceito] || '#94a3b8';
+        const block = document.createElement('div');
+        block.className = 'diag-block';
+        block.style.cssText = 'width:'+w+'%;background:'+color;
+        block.title = (seg.properties.km_ini/1000).toFixed(2)+'–'+(seg.properties.km_fim/1000).toFixed(2)+'km: '+seg.properties.conceito;
+        track.appendChild(block);
+      });
+      row.appendChild(lbl);
+      row.appendChild(track);
+      group.appendChild(row);
+    }
+
+    if (segsD.length) makeTrack(segsD, 'LD');
+    if (segsE.length) makeTrack(segsE, 'LE');
+    if (segsS.length) makeTrack(segsS, 'S');
+    content.appendChild(group);
+  });
+
+  diagram.classList.add('active');
+}
+
+function closeDiagram() {
+  document.getElementById('lvc-diagram').classList.remove('active');
+}
+
 // ===== LVC =====
 let lvcData = null;
 let lvcLayerGroup = null;
@@ -775,7 +971,14 @@ function selectAno(ano) {
     b.classList.toggle('active', b.dataset.ano === ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano === ano ? 'Ativo' : 'Clique para visualizar';
   });
-  renderLVC();
+  if (lvcSelectedName) {
+    renderLVCFiltered();
+    showDiagram(lvcSelectedName);
+  } else if (lvcSelectedRod) {
+    renderLVCFiltered();
+  } else {
+    renderLVC();
+  }
 }
 
 function setModo(modo) {
@@ -859,5 +1062,12 @@ function renderLVC() {
 }
 
 </script>
+  <div id="lvc-diagram">
+    <div class="diag-header">
+      <div class="diag-title" id="diag-title">LVC — Levantamento Visual Contínuo — Série Histórica</div>
+      <button class="diag-close" onclick="closeDiagram()">✕</button>
+    </div>
+    <div id="diag-content"></div>
+  </div>
 </body>
 </html>
