@@ -9,7 +9,7 @@ const KMZ_FILE = path.join(__dirname, 'rede_viaria.kmz');
 
 function getAttr(body, attr) {
   const escaped = attr.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const m = body.match(new RegExp(`<td>${escaped}</td>\\s*<td>([^<]+)</td>`));
+  const m = body.match(new RegExp('<td>' + escaped + '<\\/td>\\s*<td>([^<]+)<\\/td>'));
   return m ? m[1].trim() : '';
 }
 
@@ -17,22 +17,19 @@ function processKMZ(kmzPath) {
   const tmpDir = kmzPath + '_ext';
   try {
     fs.mkdirSync(tmpDir, { recursive: true });
-    execSync(`unzip -o "${kmzPath}" -d "${tmpDir}"`);
+    execSync('unzip -o "' + kmzPath + '" -d "' + tmpDir + '"');
     const kmlFile = fs.readdirSync(tmpDir).find(f => f.endsWith('.kml'));
     if (!kmlFile) throw new Error('KML não encontrado');
-
-    const raw = fs.readFileSync(path.join(tmpDir, kmlFile));
-    const content = raw.toString('utf-8');
-
+    const content = fs.readFileSync(path.join(tmpDir, kmlFile), 'utf-8');
     const features = [];
     const re = /<Placemark id="(ID_\d+)">([\s\S]*?)<\/Placemark>/g;
     let m;
     while ((m = re.exec(content)) !== null) {
-      const [, pid, body] = m;
+      const pid = m[1];
+      const body = m[2];
 
-      // Extrair name: tag é <n> (bytes: 6e 61 6d 65)
-      const nameM = body.match(/<name>([\s\S]*?)<\/name>/);
-      const name = nameM ? nameM[1].replace(/[\r\n\s]+/g, '').trim() : pid;
+      // Usar campo Name da tabela HTML — fonte definitivamente correta
+      const name = getAttr(body, 'Name') || pid;
 
       const coordM = body.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
       if (!coordM) continue;
@@ -53,7 +50,8 @@ function processKMZ(kmzPath) {
       features.push({
         type: 'Feature',
         properties: {
-          id: pid, name,
+          id: pid,
+          name: name,
           rodovia:    getAttr(body, 'RODOVIA'),
           extensao:   getAttr(body, 'EXTENSÃO'),
           desc_ini:   getAttr(body, 'DESC_INICI'),
@@ -73,29 +71,25 @@ function processKMZ(kmzPath) {
   }
 }
 
-// Sempre reprocessa o KMZ — garante names corretos
 console.log('Processando KMZ...');
 const geojson = processKMZ(KMZ_FILE);
-console.log(`${geojson.features.length} segmentos | ex: ${geojson.features[0]?.properties?.name}`);
+console.log(geojson.features.length + ' segmentos | ex: ' + geojson.features[0].properties.name);
 
-const jsonBuf  = Buffer.from(JSON.stringify(geojson), 'utf-8');
-const gzipBuf  = zlib.gzipSync(jsonBuf);
-console.log(`Cache: ${(jsonBuf.length/1024/1024).toFixed(1)}MB → gzip: ${(gzipBuf.length/1024/1024).toFixed(1)}MB`);
+const jsonBuf = Buffer.from(JSON.stringify(geojson), 'utf-8');
+const gzipBuf = zlib.gzipSync(jsonBuf);
+console.log('Cache: ' + (jsonBuf.length/1024/1024).toFixed(1) + 'MB -> gzip: ' + (gzipBuf.length/1024/1024).toFixed(1) + 'MB');
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
-
   if (req.method === 'GET' && url === '/data') {
     const gz = (req.headers['accept-encoding'] || '').includes('gzip');
-    res.writeHead(200, {
-      'Content-Type': 'application/json; charset=utf-8',
-      ...(gz ? { 'Content-Encoding': 'gzip' } : {}),
-      'Cache-Control': 'no-cache'
-    });
+    res.writeHead(200, Object.assign(
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' },
+      gz ? { 'Content-Encoding': 'gzip' } : {}
+    ));
     res.end(gz ? gzipBuf : jsonBuf);
     return;
   }
-
   fs.readFile(path.join(__dirname, 'index.html'), (err, data) => {
     if (err) { res.writeHead(500); res.end('Erro'); return; }
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -103,4 +97,4 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => console.log(`Servidor na porta ${PORT}`));
+server.listen(PORT, () => console.log('Servidor na porta ' + PORT));
