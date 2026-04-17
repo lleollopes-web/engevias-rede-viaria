@@ -29,7 +29,7 @@ function processKMZ(kmzPath) {
     let m;
     while ((m = re.exec(content)) !== null) {
       const [, pid, body] = m;
-      const nameM = body.match(/<n>([\s\S]*?)<\/n>/);
+      const nameM = body.match(/<name>([\s\S]*?)<\/name>/);
       const name = nameM ? nameM[1].replace(/[\r\n\s]+/g,'').trim() : pid;
       const coordM = body.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
       if (!coordM) continue;

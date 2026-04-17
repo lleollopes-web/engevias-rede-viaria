@@ -548,7 +548,7 @@ function applyFilters() {
     if(n && p.name!==n) return false;
     if(t && p.tipo_pav!==t) return false;
     if(j && p.jurisdicao!==j) return false;
-    if(s){ const tx=`${p.id} ${p.rodovia} ${p.desc_ini} ${p.desc_fim}`.toLowerCase(); if(!tx.includes(s)) return false; }
+    if(s){ const tx=`${p.id} ${p.name} ${p.rodovia} ${p.desc_ini} ${p.desc_fim}`.toLowerCase(); if(!tx.includes(s)) return false; }
     return true;
   });
   renderMap(vis); renderList(vis); updateStats(vis);
@@ -581,7 +581,7 @@ function renderList(features) {
     d.innerHTML=`
       <div style="display:flex;justify-content:space-between;align-items:center">
         <span class="seg-road">${p.rodovia||'—'}</span>
-        <span class="seg-id">${p.id}</span>
+        <span class="seg-id">${p.name || p.id}</span>
       </div>
       <div class="seg-desc">${p.desc_ini||'—'} → ${p.desc_fim||'—'}</div>
       <div class="seg-badges">
@@ -617,6 +617,7 @@ function showInfo(p) {
   const jcfg=getLineStyle(p);
   document.getElementById('info-title').textContent=p.rodovia||'—';
   document.getElementById('info-id').textContent=p.name || p.id;
+  // name já está correto acima
   const rows=[
     ['Situação',`<span style="font-weight:700;color:${cfg.color}">${cfg.label}</span>`],
     ['Tipo de Pavimento',p.tipo_pav||'—'],
