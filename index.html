@@ -413,8 +413,8 @@ const allFeatures = GEOJSON.features;
 
 function initApp() {
   map = L.map('map', { center:[-5.0,-39.3], zoom:7 });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution:'© OpenStreetMap contributors', maxZoom:19
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   }).addTo(map);
   layerGroup = L.layerGroup().addTo(map);
 
