@@ -6,7 +6,6 @@ const zlib = require('zlib');
 const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, 'roads_data.json');
 
-// Carregar e comprimir dados na inicialização
 console.log('Carregando dados...');
 const jsonBuf = fs.readFileSync(DATA_FILE);
 const gzipBuf = zlib.gzipSync(jsonBuf);
