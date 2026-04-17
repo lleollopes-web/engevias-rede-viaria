@@ -298,6 +298,29 @@
   .lvc-stat-label { color:var(--text3); }
   .lvc-stat-val { font-weight:600; }
 
+  /* Responsivo mobile */
+  @media (max-width: 768px) {
+    .header { height:52px; padding:0 12px; gap:10px; }
+    .header-title { font-size:14px; }
+    .header-subtitle { display:none; }
+    .header-stats { display:none; }
+    .sidebar {
+      width: 100%;
+      max-width: 100%;
+      height: 42vh;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .main-layout { flex-direction: column; }
+    #map { min-height: 58vh; }
+    .info-panel { width: calc(100% - 32px); right: 16px; bottom: 16px; }
+    .segments-list { max-height: 120px; }
+    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap:6px; padding:10px; }
+    .lvc-ano-btn { flex:1; min-width:80px; padding:10px 8px; font-size:14px; }
+    .header-sep { display:none; }
+  }
+
   /* Scrollbar */
   * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 </style>
@@ -738,7 +761,8 @@ function buildAnoBtns() {
     const btn = document.createElement('button');
     btn.className = 'lvc-ano-btn';
     btn.dataset.ano = ano;
-    btn.innerHTML = '<span style="font-size:16px">' + ano + '</span><span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>';
+    const anoLabel = ano === '025' ? '2025' : ano;
+    btn.innerHTML = '<span style="font-size:16px">' + anoLabel + '</span><span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>';
     btn.onclick = () => selectAno(ano);
     container.appendChild(btn);
   });
