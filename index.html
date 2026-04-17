@@ -311,10 +311,23 @@
       <div class="header-title">Rede Viária — Ceará</div>
       <div class="header-subtitle">SHAPE 2025 · Monitoramento de Pavimentos</div>
     </div>
-    <div class="header-stats">
+    <div class="header-stats" style="margin-left:0">
       <div class="stat-chip"><strong id="stat-total">—</strong> segmentos</div>
       <div class="stat-chip"><strong id="stat-visible">—</strong> visíveis</div>
       <div class="stat-chip"><strong id="stat-ext">—</strong> km total</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-left:auto;">
+      <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 6px;">
+        <span style="font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">MODO</span>
+        <select id="modo-select" onchange="setModo(this.value)" style="background:transparent;border:none;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;">
+          <option value="jurisdicao">Jurisdição</option>
+          <option value="lvc">Condição LVC</option>
+        </select>
+      </div>
+      <div id="ano-selector" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 6px;">
+        <span style="font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">ANO</span>
+        <select id="ano-select" onchange="setAno(this.value)" style="background:transparent;border:none;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;"></select>
+      </div>
     </div>
     <a href="/admin" target="_blank" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;margin-right:8px;" title="Administração">⚙️</a>
     <div class="header-user" onclick="logout()">
@@ -638,6 +651,81 @@ function closeInfo() {
   document.getElementById('info-panel').classList.remove('active');
   selectedId=null;
 }
+
+// ===== LVC =====
+let lvcData = null;
+let lvcLayerGroup = null;
+let currentModo = 'jurisdicao';
+let currentAno = null;
+
+const LVC_COLORS = {
+  'Bom':     '#16a34a',
+  'Regular': '#eab308',
+  'Ruim':    '#f97316',
+  'Péssimo': '#d946ef'
+};
+
+async function loadLVC() {
+  if (lvcData) return;
+  const res = await fetch('/lvc');
+  lvcData = await res.json();
+  // Popular select de anos
+  const sel = document.getElementById('ano-select');
+  lvcData.anos.forEach(ano => {
+    const o = document.createElement('option');
+    o.value = ano; o.textContent = ano;
+    sel.appendChild(o);
+  });
+  currentAno = lvcData.anos[lvcData.anos.length - 1];
+  sel.value = currentAno;
+}
+
+function setModo(modo) {
+  currentModo = modo;
+  const anoSel = document.getElementById('ano-selector');
+  const lvcLeg = document.getElementById('lvc-legend');
+  if (modo === 'lvc') {
+    anoSel.style.display = 'flex';
+    lvcLeg.style.display = 'block';
+    loadLVC().then(() => renderLVC());
+    layerGroup.clearLayers();
+  } else {
+    anoSel.style.display = 'none';
+    lvcLeg.style.display = 'none';
+    if (lvcLayerGroup) { lvcLayerGroup.clearLayers(); }
+    applyFilters();
+  }
+}
+
+function setAno(ano) {
+  currentAno = ano;
+  renderLVC();
+}
+
+function renderLVC() {
+  if (!lvcData || !currentAno) return;
+  if (!lvcLayerGroup) {
+    lvcLayerGroup = L.layerGroup().addTo(map);
+  }
+  lvcLayerGroup.clearLayers();
+  const features = lvcData.data[currentAno] || [];
+  features.forEach(f => {
+    const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
+    const line = L.polyline(
+      f.geometry.coordinates.map(c => [c[1], c[0]]),
+      { color, weight: 3, opacity: 0.9, smoothFactor: 1 }
+    );
+    line.bindTooltip(
+      f.properties.trecho + '<br>km ' + (f.properties.km_ini/1000).toFixed(3) +
+      ' – ' + (f.properties.km_fim/1000).toFixed(3) +
+      '<br><b>' + f.properties.conceito + '</b>',
+      { sticky: true }
+    );
+    line.addTo(lvcLayerGroup);
+  });
+  document.getElementById('stat-visible').textContent = features.length.toLocaleString('pt-BR');
+}
+
 </script>
 </body>
 </html>

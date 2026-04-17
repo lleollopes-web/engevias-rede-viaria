@@ -4,23 +4,38 @@ const path = require('path');
 const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'roads_data.json');
+
+function loadGzip(file) {
+  const buf = fs.readFileSync(file);
+  const gz = zlib.gzipSync(buf);
+  console.log(path.basename(file) + ': ' + (buf.length/1024/1024).toFixed(1) + 'MB -> ' + (gz.length/1024/1024).toFixed(1) + 'MB gzip');
+  return { raw: buf, gz };
+}
 
 console.log('Carregando dados...');
-const jsonBuf = fs.readFileSync(DATA_FILE);
-const gzipBuf = zlib.gzipSync(jsonBuf);
-console.log('Pronto: ' + (jsonBuf.length/1024/1024).toFixed(1) + 'MB -> gzip: ' + (gzipBuf.length/1024/1024).toFixed(1) + 'MB');
+const roads = loadGzip(path.join(__dirname, 'roads_data.json'));
+const lvc   = loadGzip(path.join(__dirname, 'lvc_data.json'));
+console.log('Pronto.');
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+  const gz = (req.headers['accept-encoding'] || '').includes('gzip');
 
   if (req.method === 'GET' && url === '/data') {
-    const gz = (req.headers['accept-encoding'] || '').includes('gzip');
     res.writeHead(200, Object.assign(
       { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' },
       gz ? { 'Content-Encoding': 'gzip' } : {}
     ));
-    res.end(gz ? gzipBuf : jsonBuf);
+    res.end(gz ? roads.gz : roads.raw);
+    return;
+  }
+
+  if (req.method === 'GET' && url === '/lvc') {
+    res.writeHead(200, Object.assign(
+      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' },
+      gz ? { 'Content-Encoding': 'gzip' } : {}
+    ));
+    res.end(gz ? lvc.gz : lvc.raw);
     return;
   }
 
