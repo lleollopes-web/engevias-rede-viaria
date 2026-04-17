@@ -273,6 +273,31 @@
   .leaflet-control-zoom a:hover { background:var(--surface2) !important; }
   .leaflet-control-attribution { font-size:10px; }
 
+  /* LVC Panel */
+  .lvc-panel { display:none; flex-direction:column; height:100%; }
+  .lvc-panel.active { display:flex; }
+  .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
+  .lvc-ano-btn {
+    padding:12px 16px; border-radius:10px; border:2px solid var(--border);
+    background:var(--surface); cursor:pointer; font-family:'Inter',sans-serif;
+    font-size:15px; font-weight:600; color:var(--text2); text-align:left;
+    transition:all 0.2s; display:flex; justify-content:space-between; align-items:center;
+  }
+  .lvc-ano-btn:hover { border-color:var(--teal); color:var(--teal); background:#f0f8fb; }
+  .lvc-ano-btn.active { border-color:var(--teal); background:var(--teal); color:#fff; }
+  .lvc-ano-btn .btn-label { font-size:11px; font-weight:500; opacity:0.75; }
+  .lvc-progress { padding:16px; border-bottom:1px solid var(--border); display:none; }
+  .lvc-progress-bar { height:6px; background:var(--border); border-radius:6px; overflow:hidden; margin-top:8px; }
+  .lvc-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--teal),#16a34a); border-radius:6px; transition:width 0.3s; }
+  .lvc-progress-txt { font-size:12px; color:var(--text3); }
+  .lvc-legend-panel { padding:16px; border-bottom:1px solid var(--border); }
+  .lvc-legend-item { display:flex; align-items:center; gap:10px; padding:6px 0; font-size:14px; font-weight:500; }
+  .lvc-legend-dot { width:16px; height:6px; border-radius:3px; flex-shrink:0; }
+  .lvc-stats { padding:16px; }
+  .lvc-stat-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; }
+  .lvc-stat-label { color:var(--text3); }
+  .lvc-stat-val { font-weight:600; }
+
   /* Scrollbar */
   * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 </style>
@@ -324,10 +349,7 @@
           <option value="lvc">Condição LVC</option>
         </select>
       </div>
-      <div id="ano-selector" style="display:none;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 6px;">
-        <span style="font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">ANO</span>
-        <select id="ano-select" onchange="setAno(this.value)" style="background:transparent;border:none;color:#fff;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;"></select>
-      </div>
+
     </div>
     <a href="/admin" target="_blank" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;margin-right:8px;" title="Administração">⚙️</a>
     <div class="header-user" onclick="logout()">
@@ -389,6 +411,40 @@
 
       <div class="list-header" id="list-header">— segmentos</div>
       <div class="segments-list" id="segments-list"></div>
+
+      <!-- Painel LVC -->
+      <div class="lvc-panel" id="lvc-panel">
+        <div style="padding:16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:4px">Condição do LVC</div>
+          <div style="font-size:12px;color:var(--text3)">Selecione o ano para visualizar</div>
+        </div>
+
+        <div class="lvc-ano-btns" id="lvc-ano-btns">
+          <!-- Botões gerados dinamicamente -->
+        </div>
+
+        <div class="lvc-progress" id="lvc-progress">
+          <div class="lvc-progress-txt" id="lvc-progress-txt">Carregando...</div>
+          <div class="lvc-progress-bar"><div class="lvc-progress-fill" id="lvc-progress-fill"></div></div>
+        </div>
+
+        <div class="lvc-legend-panel">
+          <div class="sidebar-label" style="margin-bottom:10px">Legenda</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#16a34a"></div>Bom</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#eab308"></div>Regular</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#f97316"></div>Ruim</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#d946ef"></div>Péssimo</div>
+        </div>
+
+        <div class="lvc-stats" id="lvc-stats" style="display:none">
+          <div class="sidebar-label" style="margin-bottom:10px">Estatísticas</div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label">Segmentos</span><span class="lvc-stat-val" id="lvc-n-seg">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#16a34a">Bom</span><span class="lvc-stat-val" id="lvc-bom">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#eab308">Regular</span><span class="lvc-stat-val" id="lvc-reg">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#f97316">Ruim</span><span class="lvc-stat-val" id="lvc-ruim">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#d946ef">Péssimo</span><span class="lvc-stat-val" id="lvc-pess">—</span></div>
+        </div>
+      </div>
     </div>
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
@@ -518,8 +574,6 @@ async function initApp() {
   document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   applyFilters();
-  // Pré-carregar LVC em background
-  loadLVC();
 }
 
 function toggleLegend() {
@@ -668,70 +722,116 @@ const LVC_COLORS = {
 };
 
 async function loadLVC() {
-  if (lvcData) return;
+  if (lvcData) {
+    buildAnoBtns();
+    return;
+  }
   const res = await fetch('/lvc');
   lvcData = await res.json();
-  // Popular select de anos
-  const sel = document.getElementById('ano-select');
-  sel.innerHTML = '';
+  buildAnoBtns();
+}
+
+function buildAnoBtns() {
+  const container = document.getElementById('lvc-ano-btns');
+  container.innerHTML = '';
   lvcData.anos.forEach(ano => {
-    const o = document.createElement('option');
-    o.value = ano; o.textContent = ano;
-    sel.appendChild(o);
+    const btn = document.createElement('button');
+    btn.className = 'lvc-ano-btn';
+    btn.dataset.ano = ano;
+    btn.innerHTML = '<span>' + ano + '</span><span class="btn-label">Clique para visualizar</span>';
+    btn.onclick = () => selectAno(ano);
+    container.appendChild(btn);
   });
-  currentAno = lvcData.anos[lvcData.anos.length - 1];
-  sel.value = currentAno;
-  console.log('LVC carregado. Anos:', lvcData.anos, '| Ano atual:', currentAno);
+}
+
+function selectAno(ano) {
+  currentAno = ano;
+  // Atualizar botões
+  document.querySelectorAll('.lvc-ano-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ano === ano);
+    b.querySelector('.btn-label').textContent = b.dataset.ano === ano ? 'Ativo' : 'Clique para visualizar';
+  });
+  renderLVC();
 }
 
 function setModo(modo) {
   currentModo = modo;
-  const anoSel = document.getElementById('ano-selector');
-  const lvcLeg = document.getElementById('lvc-legend');
+  const lvcPanel = document.getElementById('lvc-panel');
+  const segList  = document.getElementById('segments-list');
+  const listHdr  = document.getElementById('list-header');
+
   if (modo === 'lvc') {
-    anoSel.style.display = 'flex';
-    lvcLeg.style.display = 'block';
+    lvcPanel.classList.add('active');
+    segList.style.display  = 'none';
+    listHdr.style.display  = 'none';
     layerGroup.clearLayers();
-    if (lvcData) {
-      renderLVC();
-    } else {
-      loadLVC().then(() => renderLVC());
-    }
+    loadLVC();
   } else {
-    anoSel.style.display = 'none';
-    lvcLeg.style.display = 'none';
-    if (lvcLayerGroup) { lvcLayerGroup.clearLayers(); }
+    lvcPanel.classList.remove('active');
+    segList.style.display  = '';
+    listHdr.style.display  = '';
+    if (lvcLayerGroup) lvcLayerGroup.clearLayers();
     applyFilters();
   }
 }
 
-function setAno(ano) {
-  currentAno = ano;
-  renderLVC();
-}
-
 function renderLVC() {
   if (!lvcData || !currentAno) return;
-  if (!lvcLayerGroup) {
-    lvcLayerGroup = L.layerGroup().addTo(map);
-  }
+  if (!lvcLayerGroup) lvcLayerGroup = L.layerGroup().addTo(map);
   lvcLayerGroup.clearLayers();
+
+  // Mostrar progresso
+  const prog = document.getElementById('lvc-progress');
+  const fill = document.getElementById('lvc-progress-fill');
+  const txt  = document.getElementById('lvc-progress-txt');
+  prog.style.display = 'block';
+  fill.style.width = '0%';
+  txt.textContent = 'Carregando ' + currentAno + '...';
+
   const features = lvcData.data[currentAno] || [];
-  features.forEach(f => {
-    const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
-    const line = L.polyline(
-      f.geometry.coordinates.map(c => [c[1], c[0]]),
-      { color, weight: 3, opacity: 0.9, smoothFactor: 1 }
-    );
-    line.bindTooltip(
-      f.properties.trecho + '<br>km ' + (f.properties.km_ini/1000).toFixed(3) +
-      ' – ' + (f.properties.km_fim/1000).toFixed(3) +
-      '<br><b>' + f.properties.conceito + '</b>',
-      { sticky: true }
-    );
-    line.addTo(lvcLayerGroup);
-  });
-  document.getElementById('stat-visible').textContent = features.length.toLocaleString('pt-BR');
+  const total = features.length;
+  let done = 0;
+
+  // Renderizar em lotes para não travar a UI
+  const BATCH = 500;
+  function renderBatch(start) {
+    const end = Math.min(start + BATCH, total);
+    for (let i = start; i < end; i++) {
+      const f = features[i];
+      const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
+      const line = L.polyline(
+        f.geometry.coordinates.map(c => [c[1], c[0]]),
+        { color, weight: 3, opacity: 0.9, smoothFactor: 1 }
+      );
+      line.bindTooltip(
+        '<b>' + f.properties.trecho + '</b><br>' +
+        'km ' + (f.properties.km_ini/1000).toFixed(2) + ' – ' + (f.properties.km_fim/1000).toFixed(2) + '<br>' +
+        '<span style="color:' + color + ';font-weight:700">' + f.properties.conceito + '</span>',
+        { sticky: true }
+      );
+      line.addTo(lvcLayerGroup);
+    }
+    done = end;
+    const pct = Math.round(done/total*100);
+    fill.style.width = pct + '%';
+    txt.textContent = 'Carregando... ' + pct + '%';
+    if (done < total) {
+      requestAnimationFrame(() => renderBatch(done));
+    } else {
+      prog.style.display = 'none';
+      // Estatísticas
+      const counts = {'Bom':0,'Regular':0,'Ruim':0,'Péssimo':0};
+      features.forEach(f => { if(counts[f.properties.conceito]!==undefined) counts[f.properties.conceito]++; });
+      document.getElementById('lvc-stats').style.display = 'block';
+      document.getElementById('lvc-n-seg').textContent = total.toLocaleString('pt-BR');
+      document.getElementById('lvc-bom').textContent = counts['Bom'].toLocaleString('pt-BR');
+      document.getElementById('lvc-reg').textContent = counts['Regular'].toLocaleString('pt-BR');
+      document.getElementById('lvc-ruim').textContent = counts['Ruim'].toLocaleString('pt-BR');
+      document.getElementById('lvc-pess').textContent = counts['Péssimo'].toLocaleString('pt-BR');
+      document.getElementById('stat-visible').textContent = total.toLocaleString('pt-BR');
+    }
+  }
+  renderBatch(0);
 }
 
 </script>
