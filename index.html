@@ -518,6 +518,8 @@ async function initApp() {
   document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   applyFilters();
+  // Pré-carregar LVC em background
+  loadLVC();
 }
 
 function toggleLegend() {
@@ -671,6 +673,7 @@ async function loadLVC() {
   lvcData = await res.json();
   // Popular select de anos
   const sel = document.getElementById('ano-select');
+  sel.innerHTML = '';
   lvcData.anos.forEach(ano => {
     const o = document.createElement('option');
     o.value = ano; o.textContent = ano;
@@ -678,6 +681,7 @@ async function loadLVC() {
   });
   currentAno = lvcData.anos[lvcData.anos.length - 1];
   sel.value = currentAno;
+  console.log('LVC carregado. Anos:', lvcData.anos, '| Ano atual:', currentAno);
 }
 
 function setModo(modo) {
@@ -687,8 +691,12 @@ function setModo(modo) {
   if (modo === 'lvc') {
     anoSel.style.display = 'flex';
     lvcLeg.style.display = 'block';
-    loadLVC().then(() => renderLVC());
     layerGroup.clearLayers();
+    if (lvcData) {
+      renderLVC();
+    } else {
+      loadLVC().then(() => renderLVC());
+    }
   } else {
     anoSel.style.display = 'none';
     lvcLeg.style.display = 'none';
