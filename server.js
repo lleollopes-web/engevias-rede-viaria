@@ -1,10 +1,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const PORT = process.env.PORT || 3000;
 const KMZ_FILE = path.join(__dirname, 'rede_viaria.kmz');
 const DATA_FILE = path.join(__dirname, 'roads_data.json');
+const DATA_GZ   = path.join(__dirname, 'roads_data.json.gz');
 
 const { execSync } = require('child_process');
 
@@ -21,21 +23,14 @@ function processKMZ(kmzPath) {
     execSync(`unzip -o "${kmzPath}" -d "${tmpDir}"`);
     const kmlFile = fs.readdirSync(tmpDir).find(f => f.endsWith('.kml'));
     if (!kmlFile) throw new Error('KML não encontrado');
-    
-    // Ler como buffer para preservar \r\n
-    const buf = fs.readFileSync(path.join(tmpDir, kmlFile));
-    const content = buf.toString('utf-8');
-
+    const content = fs.readFileSync(path.join(tmpDir, kmlFile), 'utf-8');
     const features = [];
     const re = /<Placemark id="(ID_\d+)">([\s\S]*?)<\/Placemark>/g;
     let m;
     while ((m = re.exec(content)) !== null) {
       const [, pid, body] = m;
-
-      // Extrair <n> tag — pode ter \r\n dentro
       const nameM = body.match(/<n>([\s\S]*?)<\/n>/);
-      const name = nameM ? nameM[1].replace(/[\r\n\s]+/g, '').trim() : pid;
-
+      const name = nameM ? nameM[1].replace(/[\r\n\s]+/g,'').trim() : pid;
       const coordM = body.match(/<coordinates>([\s\S]*?)<\/coordinates>/);
       if (!coordM) continue;
       const coords = [];
@@ -47,11 +42,6 @@ function processKMZ(kmzPath) {
         }
       });
       if (coords.length < 2) continue;
-      const step = Math.max(1, Math.floor(coords.length / 30));
-      const simplified = coords.filter((_, i) => i % step === 0);
-      if (simplified[simplified.length-1] !== coords[coords.length-1])
-        simplified.push(coords[coords.length-1]);
-
       features.push({
         type: 'Feature',
         properties: {
@@ -66,7 +56,7 @@ function processKMZ(kmzPath) {
           tipo_pav:   getAttr(body, 'TIPO_PAV'),
           jurisdicao: getAttr(body, 'JURISDIÇ'),
         },
-        geometry: { type: 'LineString', coordinates: simplified }
+        geometry: { type: 'LineString', coordinates: coords }
       });
     }
     return { type: 'FeatureCollection', features };
@@ -75,23 +65,26 @@ function processKMZ(kmzPath) {
   }
 }
 
-// Carregar dados: prioriza roads_data.json, só reprocessa KMZ se não existir
-let geojsonData = null;
+// Comprime e cacheia o GeoJSON em memória na inicialização
+let gzipCache = null;
+let jsonCache  = null;
 
 function loadData() {
+  let geojson;
   if (fs.existsSync(DATA_FILE)) {
     console.log('Carregando roads_data.json...');
-    geojsonData = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-    console.log(`${geojsonData.features.length} segmentos carregados.`);
+    geojson = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
   } else if (fs.existsSync(KMZ_FILE)) {
     console.log('Processando KMZ...');
-    geojsonData = processKMZ(KMZ_FILE);
-    fs.writeFileSync(DATA_FILE, JSON.stringify(geojsonData));
-    console.log(`${geojsonData.features.length} segmentos processados e salvos.`);
+    geojson = processKMZ(KMZ_FILE);
+    fs.writeFileSync(DATA_FILE, JSON.stringify(geojson));
   } else {
-    console.warn('Nenhum dado encontrado!');
-    geojsonData = { type: 'FeatureCollection', features: [] };
+    geojson = { type: 'FeatureCollection', features: [] };
   }
+  console.log(`${geojson.features.length} segmentos — comprimindo para cache...`);
+  jsonCache = Buffer.from(JSON.stringify(geojson), 'utf-8');
+  gzipCache = zlib.gzipSync(jsonCache);
+  console.log(`Cache: ${(jsonCache.length/1024/1024).toFixed(1)} MB → gzip: ${(gzipCache.length/1024/1024).toFixed(1)} MB`);
 }
 
 loadData();
@@ -100,8 +93,21 @@ const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
 
   if (req.method === 'GET' && url === '/data') {
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(geojsonData));
+    const acceptGzip = (req.headers['accept-encoding'] || '').includes('gzip');
+    if (acceptGzip) {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Encoding': 'gzip',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      res.end(gzipCache);
+    } else {
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=3600'
+      });
+      res.end(jsonCache);
+    }
     return;
   }
 
