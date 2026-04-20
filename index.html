@@ -608,6 +608,7 @@ function logout() { location.reload(); }
 
 // ---- APP ----
 let map, layerGroup, layerMap={}, selectedId=null;
+let tileMap, tileSat, isSatellite=false;
 let activeFilters = { situacao: new Set(Object.keys(SITUACAO_CONFIG)), rodovia:'', tipo:'', search:'' };
 let allFeatures = [];
 
@@ -639,14 +640,12 @@ async function initApp() {
   }
 
   map = L.map('map', { center:[-5.0,-39.3], zoom:7 });
-  const tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   });
-  const tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution:'Tiles &copy; Esri &mdash; Source: Esri, USGS, NOAA', maxZoom:19,
-    crossOrigin: true
+  tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles &copy; Esri', maxZoom:19
   });
-  let isSatellite = false;
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
 
