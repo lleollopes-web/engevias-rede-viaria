@@ -362,6 +362,19 @@
     #lvc-diagram { left:0; right:0; max-height:35vw; overflow:hidden; }
   }
 
+  /* Botão satélite */
+  #btn-satellite {
+    position: absolute; top: 12px; right: 16px; z-index: 800;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 8px; padding: 7px 12px;
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    color: var(--text); cursor: pointer;
+    box-shadow: var(--shadow); transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #btn-satellite:hover { border-color: var(--teal); color: var(--teal); }
+  #btn-satellite.satellite { background: var(--navy); color: #fff; border-color: var(--navy); }
+
   /* Scrollbar */
   * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 </style>
@@ -528,6 +541,9 @@
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
+      <button id="btn-satellite" onclick="toggleSatellite()">
+        🗺️ <span id="btn-sat-label">Satélite</span>
+      </button>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
           <div>
@@ -631,9 +647,14 @@ async function initApp() {
   }
 
   map = L.map('map', { center:[-5.0,-39.3], zoom:7 });
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  const tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
-  }).addTo(map);
+  });
+  const tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'© Esri © OpenStreetMap contributors', maxZoom:19
+  });
+  let isSatellite = false;
+  tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
   setTimeout(() => { map.invalidateSize(); }, 200);
 
@@ -796,6 +817,24 @@ function showInfo(p) {
     `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
   ).join('');
   document.getElementById('info-panel').classList.add('active');
+}
+
+function toggleSatellite() {
+  const btn = document.getElementById('btn-satellite');
+  const lbl = document.getElementById('btn-sat-label');
+  if (isSatellite) {
+    map.removeLayer(tileSat);
+    tileMap.addTo(map);
+    btn.classList.remove('satellite');
+    lbl.textContent = 'Satélite';
+    isSatellite = false;
+  } else {
+    map.removeLayer(tileMap);
+    tileSat.addTo(map);
+    btn.classList.add('satellite');
+    lbl.textContent = 'Mapa';
+    isSatellite = true;
+  }
 }
 
 function closeInfo() {
