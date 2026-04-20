@@ -536,6 +536,14 @@
         box-shadow:0 2px 8px rgba(0,0,0,0.2); pointer-events:all;">
         🛰️ Satélite
       </button>
+      <button id="btn-labels" onclick="toggleLabels()" style="
+        position:absolute; bottom:32px; right:115px; z-index:1000;
+        background:#1a3a5c; border:2px solid rgba(0,0,0,0.25); border-radius:6px;
+        padding:7px 13px; font-family:Inter,sans-serif; font-size:13px;
+        font-weight:600; color:#fff; cursor:pointer; display:none;
+        box-shadow:0 2px 8px rgba(0,0,0,0.2); pointer-events:all;">
+        🏷️ Labels
+      </button>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
           <div>
@@ -648,7 +656,7 @@ async function initApp() {
   });
   // Camada de labels para sobrepor ao satélite
   const tileLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-    attribution:'© CartoDB', maxZoom:18, subdomains:'abcd', pane:'shadowPane'
+    attribution:'© CartoDB', maxZoom:18, subdomains:'abcd', zIndex:500
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
@@ -816,16 +824,21 @@ function showInfo(p) {
   document.getElementById('info-panel').classList.add('active');
 }
 
+let showLabels = true;
+
 function toggleSatellite() {
   const btn = document.getElementById('btn-satellite');
+  const btnLbl = document.getElementById('btn-labels');
   if (isSatellite) {
     map.removeLayer(tileSat);
-    map.removeLayer(tileLabels);
+    if (map.hasLayer(tileLabels)) map.removeLayer(tileLabels);
     tileMap.addTo(map);
     btn.innerHTML = '🛰️ Satélite';
     btn.style.background = '#fff';
     btn.style.color = '#1a2940';
+    btnLbl.style.display = 'none';
     isSatellite = false;
+    showLabels = true;
   } else {
     map.removeLayer(tileMap);
     tileSat.addTo(map);
@@ -833,7 +846,27 @@ function toggleSatellite() {
     btn.innerHTML = '🗺️ Mapa';
     btn.style.background = '#1a3a5c';
     btn.style.color = '#fff';
+    btnLbl.style.display = 'block';
+    btnLbl.innerHTML = '🏷️ Labels ✓';
     isSatellite = true;
+    showLabels = true;
+  }
+}
+
+function toggleLabels() {
+  const btnLbl = document.getElementById('btn-labels');
+  if (showLabels) {
+    map.removeLayer(tileLabels);
+    btnLbl.innerHTML = '🏷️ Labels';
+    btnLbl.style.background = '#fff';
+    btnLbl.style.color = '#1a2940';
+    showLabels = false;
+  } else {
+    tileLabels.addTo(map);
+    btnLbl.innerHTML = '🏷️ Labels ✓';
+    btnLbl.style.background = '#1a3a5c';
+    btnLbl.style.color = '#fff';
+    showLabels = true;
   }
 }
 
