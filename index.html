@@ -428,13 +428,6 @@
       </div>
 
     </div>
-    <button onclick="toggleSatellite()" id="btn-satellite" style="
-      background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3);
-      border-radius:6px; padding:6px 12px; color:#fff; cursor:pointer;
-      font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
-      transition:all 0.2s; display:flex; align-items:center; gap:6px;">
-      🛰️ <span id="btn-sat-label">Satélite</span>
-    </button>
     <a href="/admin" target="_blank" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;margin-right:8px;" title="Administração">⚙️</a>
     <div class="header-user" onclick="logout()">
       <span>👤</span> <span id="header-username"></span> &nbsp;·&nbsp; Sair
@@ -655,11 +648,30 @@ async function initApp() {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   });
   const tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution:'Tiles &copy; Esri', maxZoom:19
+    attribution:'Tiles &copy; Esri &mdash; Source: Esri, USGS, NOAA', maxZoom:19,
+    crossOrigin: true
   });
   let isSatellite = false;
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
+
+  // Controle de satélite como Leaflet custom control
+  const SatControl = L.Control.extend({
+    options: { position: 'bottomright' },
+    onAdd: function() {
+      const btn = L.DomUtil.create('button', '');
+      btn.id = 'btn-satellite';
+      btn.innerHTML = '🛰️ Satélite';
+      btn.style.cssText = 'background:#fff;border:2px solid rgba(0,0,0,0.2);border-radius:6px;padding:6px 12px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1a2940;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);';
+      L.DomEvent.on(btn, 'click', function(e) {
+        L.DomEvent.stopPropagation(e);
+        toggleSatellite();
+      });
+      L.DomEvent.disableClickPropagation(btn);
+      return btn;
+    }
+  });
+  new SatControl().addTo(map);
   setTimeout(() => { map.invalidateSize(); }, 200);
 
   // Rodovias
@@ -825,18 +837,19 @@ function showInfo(p) {
 
 function toggleSatellite() {
   const btn = document.getElementById('btn-satellite');
-  const lbl = document.getElementById('btn-sat-label');
   if (isSatellite) {
     map.removeLayer(tileSat);
     tileMap.addTo(map);
-    btn.style.background = 'rgba(255,255,255,0.15)';
-    lbl.textContent = '🛰️ Satélite';
+    btn.innerHTML = '🛰️ Satélite';
+    btn.style.background = '#fff';
+    btn.style.color = '#1a2940';
     isSatellite = false;
   } else {
     map.removeLayer(tileMap);
     tileSat.addTo(map);
-    btn.style.background = 'rgba(255,255,255,0.35)';
-    lbl.textContent = '🗺️ Mapa';
+    btn.innerHTML = '🗺️ Mapa';
+    btn.style.background = '#1a3a5c';
+    btn.style.color = '#fff';
     isSatellite = true;
   }
 }
