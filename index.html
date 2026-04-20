@@ -639,12 +639,12 @@ async function initApp() {
     allFeatures = GEOJSON.features || [];
   }
 
-  map = L.map('map', { center:[-5.0,-39.3], zoom:7 });
+  map = L.map('map', { center:[-5.0,-39.3], zoom:7, maxZoom:18 });
   tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   });
   tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution:'Tiles &copy; Esri', maxZoom:19
+    attribution:'Tiles &copy; Esri', maxZoom:18, maxNativeZoom:17
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
