@@ -362,19 +362,6 @@
     #lvc-diagram { left:0; right:0; max-height:35vw; overflow:hidden; }
   }
 
-  /* Botão satélite */
-  #btn-satellite {
-    position: absolute; top: 12px; right: 16px; z-index: 800;
-    background: var(--surface); border: 1.5px solid var(--border);
-    border-radius: 8px; padding: 7px 12px;
-    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
-    color: var(--text); cursor: pointer;
-    box-shadow: var(--shadow); transition: all 0.2s;
-    display: flex; align-items: center; gap: 6px;
-  }
-  #btn-satellite:hover { border-color: var(--teal); color: var(--teal); }
-  #btn-satellite.satellite { background: var(--navy); color: #fff; border-color: var(--navy); }
-
   /* Scrollbar */
   * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 </style>
@@ -541,6 +528,14 @@
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
+      <button id="btn-satellite" onclick="toggleSatellite()" style="
+        position:absolute; bottom:32px; right:10px; z-index:1000;
+        background:#fff; border:2px solid rgba(0,0,0,0.25); border-radius:6px;
+        padding:7px 13px; font-family:Inter,sans-serif; font-size:13px;
+        font-weight:600; color:#1a2940; cursor:pointer;
+        box-shadow:0 2px 8px rgba(0,0,0,0.2); pointer-events:all;">
+        🛰️ Satélite
+      </button>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
           <div>
@@ -655,23 +650,6 @@ async function initApp() {
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
 
-  // Controle de satélite como Leaflet custom control
-  const SatControl = L.Control.extend({
-    options: { position: 'bottomright' },
-    onAdd: function() {
-      const btn = L.DomUtil.create('button', '');
-      btn.id = 'btn-satellite';
-      btn.innerHTML = '🛰️ Satélite';
-      btn.style.cssText = 'background:#fff;border:2px solid rgba(0,0,0,0.2);border-radius:6px;padding:6px 12px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;color:#1a2940;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.15);';
-      L.DomEvent.on(btn, 'click', function(e) {
-        L.DomEvent.stopPropagation(e);
-        toggleSatellite();
-      });
-      L.DomEvent.disableClickPropagation(btn);
-      return btn;
-    }
-  });
-  new SatControl().addTo(map);
   setTimeout(() => { map.invalidateSize(); }, 200);
 
   // Rodovias
