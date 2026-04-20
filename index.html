@@ -428,6 +428,13 @@
       </div>
 
     </div>
+    <button onclick="toggleSatellite()" id="btn-satellite" style="
+      background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3);
+      border-radius:6px; padding:6px 12px; color:#fff; cursor:pointer;
+      font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+      transition:all 0.2s; display:flex; align-items:center; gap:6px;">
+      🛰️ <span id="btn-sat-label">Satélite</span>
+    </button>
     <a href="/admin" target="_blank" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;margin-right:8px;" title="Administração">⚙️</a>
     <div class="header-user" onclick="logout()">
       <span>👤</span> <span id="header-username"></span> &nbsp;·&nbsp; Sair
@@ -541,9 +548,6 @@
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
-      <button id="btn-satellite" onclick="toggleSatellite()">
-        🗺️ <span id="btn-sat-label">Satélite</span>
-      </button>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
           <div>
@@ -650,8 +654,8 @@ async function initApp() {
   const tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
   });
-  const tileSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-    attribution:'© Google Maps', maxZoom:20, subdomains:['mt0','mt1','mt2','mt3']
+  const tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'Tiles &copy; Esri', maxZoom:19
   });
   let isSatellite = false;
   tileMap.addTo(map);
@@ -825,14 +829,14 @@ function toggleSatellite() {
   if (isSatellite) {
     map.removeLayer(tileSat);
     tileMap.addTo(map);
-    btn.classList.remove('satellite');
-    lbl.textContent = 'Satélite';
+    btn.style.background = 'rgba(255,255,255,0.15)';
+    lbl.textContent = '🛰️ Satélite';
     isSatellite = false;
   } else {
     map.removeLayer(tileMap);
     tileSat.addTo(map);
-    btn.classList.add('satellite');
-    lbl.textContent = 'Mapa';
+    btn.style.background = 'rgba(255,255,255,0.35)';
+    lbl.textContent = '🗺️ Mapa';
     isSatellite = true;
   }
 }
