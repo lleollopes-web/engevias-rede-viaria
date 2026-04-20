@@ -528,14 +528,20 @@
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
-      <button id="btn-satellite" onclick="toggleSatellite()" style="
-        position:absolute; bottom:32px; right:10px; z-index:1000;
-        background:#fff; border:2px solid rgba(0,0,0,0.25); border-radius:6px;
-        padding:7px 13px; font-family:Inter,sans-serif; font-size:13px;
-        font-weight:600; color:#1a2940; cursor:pointer;
-        box-shadow:0 2px 8px rgba(0,0,0,0.2); pointer-events:all;">
-        🛰️ Satélite
-      </button>
+      <div style="position:absolute;bottom:32px;right:10px;z-index:1000;display:flex;gap:6px;">
+        <button id="btn-labels" onclick="toggleLabels()" style="
+          display:none;background:#fff;border:2px solid rgba(0,0,0,0.25);border-radius:6px;
+          padding:7px 13px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;
+          color:#1a2940;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+          🏷️ Labels
+        </button>
+        <button id="btn-satellite" onclick="toggleSatellite()" style="
+          background:#fff;border:2px solid rgba(0,0,0,0.25);border-radius:6px;
+          padding:7px 13px;font-family:Inter,sans-serif;font-size:13px;font-weight:600;
+          color:#1a2940;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+          🛰️ Satélite
+        </button>
+      </div>
       <div class="info-panel" id="info-panel">
         <div class="info-header">
           <div>
@@ -608,7 +614,7 @@ function logout() { location.reload(); }
 
 // ---- APP ----
 let map, layerGroup, layerMap={}, selectedId=null;
-let tileMap, tileSat, isSatellite=false;
+let tileMap, tileSat, tileLabels, isSatellite=false;
 let activeFilters = { situacao: new Set(Object.keys(SITUACAO_CONFIG)), rodovia:'', tipo:'', search:'' };
 let allFeatures = [];
 
@@ -641,14 +647,13 @@ async function initApp() {
 
   map = L.map('map', { center:[-5.0,-39.3], zoom:7, maxZoom:18 });
   tileMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-    attribution:'© OpenStreetMap © CartoDB', maxZoom:19, subdomains:'abcd'
+    attribution:'© OpenStreetMap © CartoDB', maxZoom:18, subdomains:'abcd'
   });
   tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    attribution:'Tiles &copy; Esri', maxZoom:18, maxNativeZoom:17
+    attribution:'Tiles © Esri', maxZoom:18, maxNativeZoom:17
   });
-  // Camada de labels para sobrepor ao satélite
-  const tileLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-    attribution:'© CartoDB', maxZoom:18, subdomains:'abcd', zIndex:500
+  tileLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+    attribution:'© CartoDB', maxZoom:18, subdomains:'abcd'
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
@@ -816,37 +821,44 @@ function showInfo(p) {
   document.getElementById('info-panel').classList.add('active');
 }
 
-// 0 = Mapa, 1 = Satélite, 2 = Satélite+Labels
-let mapMode = 0;
-
 function toggleSatellite() {
   const btn = document.getElementById('btn-satellite');
-  mapMode = (mapMode + 1) % 3;
-
-  // Remover todas as camadas base
-  if (map.hasLayer(tileMap))    map.removeLayer(tileMap);
-  if (map.hasLayer(tileSat))    map.removeLayer(tileSat);
-  if (map.hasLayer(tileLabels)) map.removeLayer(tileLabels);
-
-  if (mapMode === 0) {
+  const btnL = document.getElementById('btn-labels');
+  if (!isSatellite) {
+    map.removeLayer(tileMap);
+    tileSat.addTo(map);
+    btn.innerHTML = '🗺️ Mapa';
+    btn.style.background = '#1a3a5c';
+    btn.style.color = '#fff';
+    btnL.style.display = 'block';
+    isSatellite = true;
+  } else {
+    if (map.hasLayer(tileLabels)) map.removeLayer(tileLabels);
+    map.removeLayer(tileSat);
     tileMap.addTo(map);
     btn.innerHTML = '🛰️ Satélite';
     btn.style.background = '#fff';
     btn.style.color = '#1a2940';
+    btnL.style.display = 'none';
+    btnL.innerHTML = '🏷️ Labels';
+    btnL.style.background = '#fff';
+    btnL.style.color = '#1a2940';
     isSatellite = false;
-  } else if (mapMode === 1) {
-    tileSat.addTo(map);
-    btn.innerHTML = '🏷️ + Labels';
-    btn.style.background = '#1a3a5c';
-    btn.style.color = '#fff';
-    isSatellite = true;
+  }
+}
+
+function toggleLabels() {
+  const btnL = document.getElementById('btn-labels');
+  if (map.hasLayer(tileLabels)) {
+    map.removeLayer(tileLabels);
+    btnL.innerHTML = '🏷️ Labels';
+    btnL.style.background = '#fff';
+    btnL.style.color = '#1a2940';
   } else {
-    tileSat.addTo(map);
     tileLabels.addTo(map);
-    btn.innerHTML = '🗺️ Mapa';
-    btn.style.background = '#2a8fa0';
-    btn.style.color = '#fff';
-    isSatellite = true;
+    btnL.innerHTML = '🏷️ Labels ✓';
+    btnL.style.background = '#1a3a5c';
+    btnL.style.color = '#fff';
   }
 }
 
