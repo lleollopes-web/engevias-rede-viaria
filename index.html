@@ -705,16 +705,31 @@ function applyFilters() {
 
 function renderMap(features) {
   layerGroup.clearLayers(); layerMap={};
+  const isMobile = window.innerWidth <= 768;
   features.forEach(f=>{
     const p=f.properties;
     const cfg=getLineStyle(p);
-    const line=L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
-      {color:cfg.color, weight:cfg.width, opacity:0.85, smoothFactor:1});
-    line.on('click',()=>showInfo(p,line));
-    line.on('mouseover',function(){this.setStyle({weight:cfg.width+2,opacity:1});});
-    line.on('mouseout',function(){this.setStyle({weight:cfg.width,opacity:0.85});});
+    const coords = f.geometry.coordinates.map(c=>[c[1],c[0]]);
+
+    // Linha visual
+    const line=L.polyline(coords,
+      {color:cfg.color, weight:cfg.width, opacity:0.85, smoothFactor:1, interactive:false});
     line.addTo(layerGroup);
     layerMap[p.id]=line;
+
+    // Camada de toque invisível — mais grossa no mobile
+    const hitWidth = isMobile ? 20 : cfg.width + 4;
+    const hit = L.polyline(coords,
+      {color:'transparent', weight:hitWidth, opacity:0, smoothFactor:1});
+    hit.on('click', ()=>showInfo(p));
+    hit.on('mouseover', function(){
+      line.setStyle({weight:cfg.width+2, opacity:1});
+      if (!isMobile) this.getElement() && (this.getElement().style.cursor='pointer');
+    });
+    hit.on('mouseout', function(){
+      line.setStyle({weight:cfg.width, opacity:0.85});
+    });
+    hit.addTo(layerGroup);
   });
 }
 
