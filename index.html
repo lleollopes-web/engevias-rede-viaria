@@ -646,6 +646,10 @@ async function initApp() {
   tileSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution:'Tiles &copy; Esri', maxZoom:18, maxNativeZoom:17
   });
+  // Camada de labels para sobrepor ao satélite
+  const tileLabels = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+    attribution:'© CartoDB', maxZoom:18, subdomains:'abcd', pane:'shadowPane'
+  });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
 
@@ -816,6 +820,7 @@ function toggleSatellite() {
   const btn = document.getElementById('btn-satellite');
   if (isSatellite) {
     map.removeLayer(tileSat);
+    map.removeLayer(tileLabels);
     tileMap.addTo(map);
     btn.innerHTML = '🛰️ Satélite';
     btn.style.background = '#fff';
@@ -824,6 +829,7 @@ function toggleSatellite() {
   } else {
     map.removeLayer(tileMap);
     tileSat.addTo(map);
+    tileLabels.addTo(map);
     btn.innerHTML = '🗺️ Mapa';
     btn.style.background = '#1a3a5c';
     btn.style.color = '#fff';
