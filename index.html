@@ -433,8 +433,9 @@
       <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:4px 6px;">
         <span style="font-size:11px;color:rgba(255,255,255,0.6);letter-spacing:0.5px;">MODO</span>
         <select id="modo-select" onchange="setModo(this.value)" style="background:#fff;border:none;color:#1a2940;font-family:Inter,sans-serif;font-size:13px;font-weight:600;outline:none;cursor:pointer;border-radius:4px;padding:2px 4px;">
-          <option value="jurisdicao">Jurisdição</option>
-          <option value="lvc">Condição LVC</option>
+          <option value="jurisdicao">Situação Geral</option>
+          <option value="lvc">Condição do LVC</option>
+          <option value="iri">Condição do IRI</option>
         </select>
       </div>
 
@@ -838,12 +839,20 @@ function showInfo(p) {
     ['Extensão',p.extensao?p.extensao+' km':'—'],
     ['Início',p.desc_ini||'—'],
     ['Fim',p.desc_fim||'—'],
-    ['Jurisdição',p.jurisdicao||'—'],
+    ['Situação Geral',p.jurisdicao||'—'],
   ];
   document.getElementById('info-content').innerHTML=rows.map(([k,v])=>
     `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
   ).join('');
   document.getElementById('info-panel').classList.add('active');
+}
+
+function showIriPopup() {
+  const m = document.getElementById('iri-modal');
+  m.style.display = 'flex';
+}
+function closeIriPopup() {
+  document.getElementById('iri-modal').style.display = 'none';
 }
 
 function zoomExtents() {
@@ -1134,6 +1143,12 @@ function setModo(modo) {
   const listHdr    = document.getElementById('list-header');
   const jurisFilts = document.getElementById('juris-filters');
 
+  if (modo === 'iri') {
+    // Mostrar popup "em desenvolvimento"
+    document.getElementById('modo-select').value = currentModo;
+    showIriPopup();
+    return;
+  }
   if (modo === 'lvc') {
     lvcPanel.classList.add('active');
     segList.style.display   = 'none';
@@ -1219,6 +1234,15 @@ function renderLVC() {
       <button class="diag-close" onclick="closeDiagram()">✕</button>
     </div>
     <div id="diag-content"></div>
+  </div>
+  <!-- Modal IRI -->
+  <div id="iri-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:40px 48px;text-align:center;max-width:360px;box-shadow:0 16px 48px rgba(0,0,0,0.25);animation:fadeUp 0.3s ease;">
+      <div style="font-size:48px;margin-bottom:16px;">⚙️</div>
+      <div style="font-family:'Inter Tight',sans-serif;font-size:20px;font-weight:700;color:#1a2940;margin-bottom:10px;">Condição do IRI</div>
+      <div style="font-size:14px;color:#7a95b0;line-height:1.6;margin-bottom:24px;">Este módulo está em processo de criação e estará disponível em breve.</div>
+      <button onclick="closeIriPopup()" style="background:linear-gradient(135deg,#1a3a5c,#1e7fa0);border:none;border-radius:8px;padding:12px 32px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">OK, entendido</button>
+    </div>
   </div>
 </body>
 </html>
