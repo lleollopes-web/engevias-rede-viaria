@@ -341,25 +341,47 @@
 
   /* Responsivo mobile */
   @media (max-width: 768px) {
-    .header { height:48px; padding:0 10px; gap:8px; flex-wrap:wrap; }
-    .header-title { font-size:13px; }
-    .header-subtitle { display:none; }
-    .header-stats { display:none; }
-    .header-sep { display:none; }
-    .main-layout { flex-direction:column; overflow:auto; }
-    .sidebar {
-      width:100%; max-width:100%;
-      height:auto; max-height:45vh;
-      border-right:none; border-bottom:1px solid var(--border);
-      overflow-y:auto; flex-shrink:0; order:1;
+    /* Header compacto */
+    .header {
+      height: auto; min-height: 52px;
+      padding: 6px 10px; gap: 8px;
+      flex-wrap: wrap; align-items: center;
     }
-    #map { min-height:55vh; flex:1; order:2; }
-    .info-panel { width:calc(100% - 24px); right:12px; bottom:12px; }
-    .segments-list { max-height:100px; }
-    .lvc-ano-btns { flex-direction:row; flex-wrap:wrap; gap:6px; padding:10px; }
-    .lvc-ano-btn { flex:1; min-width:80px; padding:8px 6px; font-size:13px; }
-    .lvc-panel { max-height:40vh; overflow-y:auto; }
-    #lvc-diagram { left:0; right:0; max-height:35vw; overflow:hidden; }
+    .header-logo { height: 30px; }
+    .header-sep { display: none; }
+    .header-subtitle { display: none; }
+    .header-stats { display: none; }
+    .header-title { font-size: 13px; }
+
+    /* Seletor MODO e botão usuário em linha separada */
+    .header > div:nth-child(3) { order: 3; width: 100%; }
+    .header-user {
+      font-size: 12px; padding: 5px 10px;
+      background: rgba(255,255,255,0.2) !important;
+      color: #fff !important; border-color: rgba(255,255,255,0.3) !important;
+    }
+
+    /* Layout vertical: mapa em cima, sidebar embaixo */
+    .main-layout { flex-direction: column; overflow: hidden; }
+    .sidebar {
+      width: 100%; max-width: 100%; order: 2;
+      height: auto; max-height: 40vh;
+      border-right: none; border-top: 2px solid var(--border);
+      overflow-y: auto; flex-shrink: 0;
+    }
+    #map { min-height: 50vh; flex: 1; order: 1; }
+
+    /* Botões do mapa — mover para baixo no mobile */
+    #map ~ div { top: auto !important; bottom: 10px !important; right: 8px !important; }
+
+    .info-panel { width: calc(100% - 24px); right: 12px; bottom: 60px; }
+    .segments-list { max-height: 80px; }
+    .filter-group select { font-size: 14px; padding: 10px 12px; }
+
+    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 10px; }
+    .lvc-ano-btn { flex: 1; min-width: 80px; padding: 8px 6px; font-size: 13px; }
+    .lvc-panel { max-height: 38vh; overflow-y: auto; }
+    #lvc-diagram { left: 0; right: 0; }
   }
 
   /* Scrollbar */
