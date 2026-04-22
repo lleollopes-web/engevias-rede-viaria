@@ -1369,19 +1369,19 @@ function setModo(modo) {
     return;
   }
   if (modo === 'lvc') {
-    lvcPanel.classList.add('active');
-    segList.style.display   = 'none';
-    listHdr.style.display   = 'none';
-    jurisFilts.style.display = 'none';
+    document.getElementById('lvc-panel').classList.add('active');
+    document.getElementById('segments-list').style.display   = 'none';
+    document.getElementById('list-header').style.display     = 'none';
+    document.getElementById('juris-filters').style.display   = 'none';
     layerGroup.clearLayers();
     closeDiagram();
     loadLVC();
   } else {
-    lvcPanel.classList.remove('active');
+    document.getElementById('lvc-panel').classList.remove('active');
     document.getElementById('iri-panel').classList.remove('active');
-    segList.style.display   = '';
-    listHdr.style.display   = '';
-    jurisFilts.style.display = '';
+    document.getElementById('segments-list').style.display   = '';
+    document.getElementById('list-header').style.display     = '';
+    document.getElementById('juris-filters').style.display   = '';
     if (lvcLayerGroup) lvcLayerGroup.clearLayers();
     if (iriLayerGroup) iriLayerGroup.clearLayers();
     closeDiagram();
