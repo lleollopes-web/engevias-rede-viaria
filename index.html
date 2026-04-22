@@ -1318,13 +1318,17 @@ function mfUpdateBadges(modo) {
   label.classList.add('has-sel');
   zeroRods.forEach(rod => {
     const b = document.createElement('div'); b.className='mf-badge';
-    b.innerHTML='🚫 '+rod+' <span class="mf-badge-x" onclick="mfRodToggle(''+modo+'',''+rod+'',true)">×</span>';
+    const bx1=document.createElement('span'); bx1.className='mf-badge-x'; bx1.textContent='×';
+    bx1.onclick=()=>mfRodToggle(modo,rod,true);
+    b.innerHTML='🚫 '+rod+' '; b.appendChild(bx1);
     badges.appendChild(b);
   });
   partialRods.forEach(rod => {
     mfState[modo][rod].forEach(seg => {
       const b = document.createElement('div'); b.className='mf-badge';
-      b.innerHTML='✓ '+seg+' <span class="mf-badge-x" onclick="mfSegToggle(''+modo+'',''+rod+'',''+seg+'',false)">×</span>';
+      const bx=document.createElement('span'); bx.className='mf-badge-x'; bx.textContent='×';
+      bx.onclick=((_m,_r,_s)=>()=>mfSegToggle(_m,_r,_s,false))(modo,rod,seg);
+      b.textContent='✓ '+seg+' '; b.appendChild(bx);
       badges.appendChild(b);
     });
   });
