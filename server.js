@@ -15,27 +15,21 @@ function loadGzip(file) {
 console.log('Carregando dados...');
 const roads = loadGzip(path.join(__dirname, 'roads_data.json'));
 const lvc   = loadGzip(path.join(__dirname, 'lvc_data.json'));
+const iri   = loadGzip(path.join(__dirname, 'iri_data.json'));
 console.log('Pronto.');
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
   const gz = (req.headers['accept-encoding'] || '').includes('gzip');
 
-  if (req.method === 'GET' && url === '/data') {
+  const routes = { '/data': roads, '/lvc': lvc, '/iri': iri };
+  if (req.method === 'GET' && routes[url]) {
+    const d = routes[url];
     res.writeHead(200, Object.assign(
       { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' },
       gz ? { 'Content-Encoding': 'gzip' } : {}
     ));
-    res.end(gz ? roads.gz : roads.raw);
-    return;
-  }
-
-  if (req.method === 'GET' && url === '/lvc') {
-    res.writeHead(200, Object.assign(
-      { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' },
-      gz ? { 'Content-Encoding': 'gzip' } : {}
-    ));
-    res.end(gz ? lvc.gz : lvc.raw);
+    res.end(gz ? d.gz : d.raw);
     return;
   }
 

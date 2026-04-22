@@ -500,6 +500,45 @@
       </div>
       </div><!-- /juris-filters -->
 
+      <!-- Painel IRI -->
+      <div class="lvc-panel" id="iri-panel">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:4px">Condição do IRI</div>
+          <div style="font-size:12px;color:var(--text3)">Índice de Irregularidade Internacional</div>
+        </div>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:8px">Filtrar segmento</div>
+          <div class="filter-group">
+            <select id="iri-filter-rod" onchange="iriFilterRod()">
+              <option value="">Todas as rodovias</option>
+            </select>
+          </div>
+          <div class="filter-group" id="iri-name-group" style="display:none;">
+            <select id="iri-filter-name" onchange="iriFilterName()">
+              <option value="">Todos os segmentos</option>
+            </select>
+          </div>
+        </div>
+        <div class="lvc-ano-btns" id="iri-ano-btns"></div>
+        <div class="lvc-progress" id="iri-progress">
+          <div class="lvc-progress-txt" id="iri-progress-txt">Carregando...</div>
+          <div class="lvc-progress-bar"><div class="lvc-progress-fill" id="iri-progress-fill"></div></div>
+        </div>
+        <div class="lvc-legend-panel">
+          <div class="sidebar-label" style="margin-bottom:10px">Legenda</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#16a34a"></div>Bom (IRI ≤ 2.7)</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#eab308"></div>Regular (2.7 &lt; IRI ≤ 4.0)</div>
+          <div class="lvc-legend-item"><div class="lvc-legend-dot" style="background:#f97316"></div>Ruim (IRI > 4.0)</div>
+        </div>
+        <div class="lvc-stats" id="iri-stats" style="display:none">
+          <div class="sidebar-label" style="margin-bottom:10px">Estatísticas</div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label">Segmentos</span><span class="lvc-stat-val" id="iri-n-seg">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#16a34a">Bom</span><span class="lvc-stat-val" id="iri-bom">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#eab308">Regular</span><span class="lvc-stat-val" id="iri-reg">—</span></div>
+          <div class="lvc-stat-row"><span class="lvc-stat-label" style="color:#f97316">Ruim</span><span class="lvc-stat-val" id="iri-ruim">—</span></div>
+        </div>
+      </div>
+
       <div class="list-header" id="list-header">— segmentos</div>
       <div class="segments-list" id="segments-list"></div>
 
@@ -900,6 +939,176 @@ function toggleLabels() {
   }
 }
 
+// ── IRI ─────────────────────────────────────────────────────────────────────
+let iriData = null;
+let iriLayerGroup = null;
+let iriCurrentAno = null;
+let iriSelectedRod = '';
+let iriSelectedName = '';
+
+const IRI_COLORS = { 'BOM':'#16a34a', 'REGULAR':'#eab308', 'RUIM':'#f97316' };
+
+async function loadIRI() {
+  if (iriData) { buildIriAnoBtns(); return; }
+  const res = await fetch('/iri');
+  iriData = await res.json();
+  buildIriAnoBtns();
+  initIriFilters();
+}
+
+function buildIriAnoBtns() {
+  const c = document.getElementById('iri-ano-btns');
+  c.innerHTML = '';
+  iriData.anos.forEach(ano => {
+    const btn = document.createElement('button');
+    btn.className = 'lvc-ano-btn'; btn.dataset.ano = ano;
+    const lbl = ano === '2025' ? '2025' : ano;
+    btn.innerHTML = '<span style="font-size:16px">'+lbl+'</span><span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>';
+    btn.onclick = () => iriSelectAno(ano);
+    c.appendChild(btn);
+  });
+}
+
+function initIriFilters() {
+  const sel = document.getElementById('iri-filter-rod');
+  const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
+  rods.forEach(r => { const o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o); });
+}
+
+function iriFilterRod() {
+  iriSelectedRod = document.getElementById('iri-filter-rod').value;
+  iriSelectedName = '';
+  const grp = document.getElementById('iri-name-group');
+  const sel = document.getElementById('iri-filter-name');
+  sel.innerHTML = '<option value="">Todos os segmentos</option>';
+  if (iriSelectedRod && iriData && iriCurrentAno) {
+    grp.style.display = 'block';
+    const features = iriData.data[iriCurrentAno] || [];
+    const names = [...new Set(features.filter(f=>f.properties.rod===iriSelectedRod).map(f=>f.properties.trecho))].sort();
+    names.forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
+  } else { grp.style.display='none'; }
+  renderIRIFiltered();
+}
+
+function iriFilterName() {
+  iriSelectedName = document.getElementById('iri-filter-name').value;
+  renderIRIFiltered();
+  if (iriSelectedName) showIriDiagram(iriSelectedName);
+  else closeDiagram();
+}
+
+function iriSelectAno(ano) {
+  iriCurrentAno = ano;
+  document.querySelectorAll('#iri-ano-btns .lvc-ano-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ano===ano);
+    b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
+  });
+  if (iriSelectedName) { renderIRIFiltered(); showIriDiagram(iriSelectedName); }
+  else if (iriSelectedRod) renderIRIFiltered();
+  else renderIRI();
+}
+
+function renderIRI() {
+  if (!iriData || !iriCurrentAno) return;
+  if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
+  iriLayerGroup.clearLayers();
+  const prog = document.getElementById('iri-progress');
+  const fill = document.getElementById('iri-progress-fill');
+  const txt  = document.getElementById('iri-progress-txt');
+  prog.style.display='block'; fill.style.width='0%';
+  const features = iriData.data[iriCurrentAno] || [];
+  const total = features.length; let done=0;
+  function batch(start) {
+    const end = Math.min(start+500, total);
+    for (let i=start;i<end;i++) {
+      const f=features[i];
+      const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
+      const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:3,opacity:0.9,smoothFactor:1});
+      line.bindTooltip('<b>'+f.properties.trecho+'</b><br>IRI: '+f.properties.valor+'<br><span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',{sticky:true});
+      line.addTo(iriLayerGroup);
+    }
+    done=end;
+    fill.style.width=Math.round(done/total*100)+'%';
+    txt.textContent='Carregando... '+Math.round(done/total*100)+'%';
+    if (done<total) requestAnimationFrame(()=>batch(done));
+    else {
+      prog.style.display='none';
+      const counts={'BOM':0,'REGULAR':0,'RUIM':0};
+      features.forEach(f=>{if(counts[f.properties.condicao]!==undefined)counts[f.properties.condicao]++;});
+      document.getElementById('iri-stats').style.display='block';
+      document.getElementById('iri-n-seg').textContent=total.toLocaleString('pt-BR');
+      document.getElementById('iri-bom').textContent=counts['BOM'].toLocaleString('pt-BR');
+      document.getElementById('iri-reg').textContent=counts['REGULAR'].toLocaleString('pt-BR');
+      document.getElementById('iri-ruim').textContent=counts['RUIM'].toLocaleString('pt-BR');
+    }
+  }
+  batch(0);
+}
+
+function renderIRIFiltered() {
+  if (!iriData || !iriCurrentAno) return;
+  if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
+  iriLayerGroup.clearLayers();
+  let features = iriData.data[iriCurrentAno] || [];
+  if (iriSelectedRod) features = features.filter(f=>f.properties.rod===iriSelectedRod);
+  if (iriSelectedName) {
+    features = features.filter(f=>f.properties.trecho===iriSelectedName);
+    const rf = allFeatures.find(f=>f.properties.name===iriSelectedName);
+    if (rf) map.fitBounds(L.polyline(rf.geometry.coordinates.map(c=>[c[1],c[0]])).getBounds(),{padding:[60,60]});
+  }
+  features.forEach(f=>{
+    const color=IRI_COLORS[f.properties.condicao]||'#94a3b8';
+    const line=L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:4,opacity:0.95,smoothFactor:1});
+    line.bindTooltip('<b>'+f.properties.trecho+'</b><br>IRI: '+f.properties.valor+'<br><span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',{sticky:true});
+    line.addTo(iriLayerGroup);
+  });
+}
+
+function showIriDiagram(name) {
+  if (!iriData) return;
+  const diagram = document.getElementById('lvc-diagram');
+  const content = document.getElementById('diag-content');
+  document.getElementById('diag-title').textContent = 'IRI — '+name+' — Série Histórica';
+  content.innerHTML = '';
+  let maxKm = 0;
+  iriData.anos.forEach(ano=>{
+    const segs=(iriData.data[ano]||[]).filter(f=>f.properties.trecho===name);
+    if(segs.length){const last=Math.max(...segs.map(f=>f.properties.km_fim));maxKm=Math.max(maxKm,last);}
+  });
+  const kmTotal=maxKm/1000;
+  const trackH=kmTotal<2?20:kmTotal<10?16:kmTotal<30?12:9;
+  iriData.anos.forEach(ano=>{
+    const anoLabel=ano;
+    const segs=(iriData.data[ano]||[]).filter(f=>f.properties.trecho===name).sort((a,b)=>a.properties.km_ini-b.properties.km_ini);
+    if(!segs.length) return;
+    const total=segs[segs.length-1].properties.km_fim;
+    const group=document.createElement('div'); group.className='diag-year-group';
+    const tag=document.createElement('div'); tag.className='diag-year-tag'; tag.textContent=anoLabel;
+    const tracks=document.createElement('div'); tracks.className='diag-tracks';
+    const row=document.createElement('div'); row.className='diag-row';
+    const lbl=document.createElement('div'); lbl.className='diag-label'; lbl.textContent='IRI';
+    const track=document.createElement('div'); track.className='diag-track'; track.style.height=trackH+'px';
+    segs.forEach(seg=>{
+      const w=((seg.properties.km_fim-seg.properties.km_ini)/total*100).toFixed(3);
+      const color=IRI_COLORS[seg.properties.condicao]||'#94a3b8';
+      const block=document.createElement('div'); block.className='diag-block';
+      block.style.cssText='width:'+w+'%;background:'+color+';height:'+trackH+'px';
+      block.title=(seg.properties.km_ini/1000).toFixed(2)+'–'+(seg.properties.km_fim/1000).toFixed(2)+'km | IRI:'+seg.properties.valor+' | '+seg.properties.condicao;
+      track.appendChild(block);
+    });
+    row.appendChild(lbl); row.appendChild(track);
+    tracks.appendChild(row); group.appendChild(tag); group.appendChild(tracks);
+    content.appendChild(group);
+  });
+  // Eixo X
+  const xaxis=document.createElement('div'); xaxis.className='diag-xaxis';
+  const interval=kmTotal<2?0.2:kmTotal<10?1:kmTotal<30?5:10;
+  const ticks=Math.floor(kmTotal/interval);
+  for(let i=0;i<=ticks;i++){const t=document.createElement('div');t.className='diag-xtick';t.textContent=(i*interval).toFixed(interval<1?1:0)+'km';xaxis.appendChild(t);}
+  content.appendChild(xaxis);
+  diagram.classList.add('active');
+}
+
 function closeInfo() {
   document.getElementById('info-panel').classList.remove('active');
   selectedId=null;
@@ -1144,9 +1353,15 @@ function setModo(modo) {
   const jurisFilts = document.getElementById('juris-filters');
 
   if (modo === 'iri') {
-    // Mostrar popup "em desenvolvimento"
-    document.getElementById('modo-select').value = currentModo;
-    showIriPopup();
+    lvcPanel.classList.remove('active');
+    segList.style.display   = 'none';
+    listHdr.style.display   = 'none';
+    jurisFilts.style.display = 'none';
+    layerGroup.clearLayers();
+    if (lvcLayerGroup) lvcLayerGroup.clearLayers();
+    closeDiagram();
+    document.getElementById('iri-panel').classList.add('active');
+    loadIRI();
     return;
   }
   if (modo === 'lvc') {
@@ -1159,10 +1374,12 @@ function setModo(modo) {
     loadLVC();
   } else {
     lvcPanel.classList.remove('active');
+    document.getElementById('iri-panel').classList.remove('active');
     segList.style.display   = '';
     listHdr.style.display   = '';
     jurisFilts.style.display = '';
     if (lvcLayerGroup) lvcLayerGroup.clearLayers();
+    if (iriLayerGroup) iriLayerGroup.clearLayers();
     closeDiagram();
     applyFilters();
   }
