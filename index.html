@@ -1290,6 +1290,7 @@ function mfToggle(modo) {
 }
 
 document.addEventListener('click', function(e) {
+  if (!document.getElementById('app').classList.contains('active')) return;
   if (!e.target.closest('.mf-wrapper')) {
     document.querySelectorAll('.mf-dropdown').forEach(d=>d.classList.remove('open'));
     document.querySelectorAll('.mf-trigger').forEach(t=>t.classList.remove('open'));
