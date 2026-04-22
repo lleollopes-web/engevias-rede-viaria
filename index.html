@@ -343,6 +343,89 @@
   #lvc-filters { padding:12px 16px; border-bottom:1px solid var(--border); display:none; }
   #lvc-filters.active { display:block; }
 
+  /* ===== FILTRO MÚLTIPLO ===== */
+  .mf-wrapper { position:relative; }
+  .mf-trigger {
+    width:100%; padding:10px 12px;
+    background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:var(--radius); color:var(--text);
+    font-family:'Inter',sans-serif; font-size:14px;
+    cursor:pointer; text-align:left; display:flex;
+    justify-content:space-between; align-items:center;
+    transition:border-color 0.2s; user-select:none;
+  }
+  .mf-trigger:hover, .mf-trigger.open { border-color:var(--teal); }
+  .mf-trigger-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text3); }
+  .mf-trigger-label.has-sel { color:var(--text); font-weight:600; }
+  .mf-trigger-arrow { font-size:10px; color:var(--text3); margin-left:6px; transition:transform 0.2s; flex-shrink:0; }
+  .mf-trigger.open .mf-trigger-arrow { transform:rotate(180deg); }
+
+  .mf-dropdown {
+    position:absolute; left:0; right:0; top:calc(100% + 4px);
+    background:var(--surface); border:1.5px solid var(--teal);
+    border-radius:var(--radius); z-index:500;
+    box-shadow:var(--shadow-lg); max-height:260px; overflow-y:auto;
+    display:none;
+  }
+  .mf-dropdown.open { display:block; }
+
+  .mf-search {
+    padding:8px 10px; border-bottom:1px solid var(--border);
+    position:sticky; top:0; background:var(--surface); z-index:1;
+  }
+  .mf-search input {
+    width:100%; padding:7px 10px; font-size:13px;
+    background:var(--surface2); border:1.5px solid var(--border);
+    border-radius:6px; outline:none; color:var(--text);
+    font-family:'Inter',sans-serif;
+  }
+  .mf-search input:focus { border-color:var(--teal); }
+
+  .mf-actions { display:flex; gap:0; border-bottom:1px solid var(--border); }
+  .mf-action-btn {
+    flex:1; padding:6px 0; font-size:11px; font-weight:600;
+    letter-spacing:0.5px; text-transform:uppercase; color:var(--teal);
+    background:none; border:none; cursor:pointer; transition:background 0.15s;
+  }
+  .mf-action-btn:hover { background:var(--surface2); }
+  .mf-action-btn + .mf-action-btn { border-left:1px solid var(--border); }
+
+  .mf-rod-item { border-bottom:1px solid var(--border); }
+  .mf-rod-header {
+    display:flex; align-items:center; gap:8px;
+    padding:9px 12px; cursor:pointer; user-select:none;
+    transition:background 0.15s;
+  }
+  .mf-rod-header:hover { background:var(--surface2); }
+  .mf-rod-cb { width:16px; height:16px; cursor:pointer; accent-color:var(--teal); flex-shrink:0; }
+  .mf-rod-name { flex:1; font-size:13px; font-weight:600; color:var(--navy); }
+  .mf-rod-toggle {
+    font-size:10px; color:var(--text3);
+    background:none; border:none; cursor:pointer;
+    padding:2px 6px; border-radius:4px; transition:all 0.15s;
+  }
+  .mf-rod-toggle:hover { background:var(--border); color:var(--text); }
+
+  .mf-segs { display:none; background:var(--surface2); border-top:1px solid var(--border); }
+  .mf-segs.open { display:block; }
+  .mf-seg-item {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 12px 7px 32px; cursor:pointer;
+    transition:background 0.15s; font-size:13px; color:var(--text2);
+  }
+  .mf-seg-item:hover { background:#e8f4f8; }
+  .mf-seg-cb { width:14px; height:14px; cursor:pointer; accent-color:var(--teal); flex-shrink:0; }
+
+  .mf-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:0; }
+  .mf-badge {
+    display:flex; align-items:center; gap:4px;
+    background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;
+    font-size:11px; font-weight:600; padding:2px 7px 2px 8px;
+    border-radius:10px;
+  }
+  .mf-badge-x { cursor:pointer; font-size:13px; line-height:1; color:#0369a1; opacity:0.6; }
+  .mf-badge-x:hover { opacity:1; }
+
   /* Responsivo mobile */
   @media (max-width: 768px) {
     /* Header compacto */
@@ -464,15 +547,24 @@
       </div>
 
       <div class="sidebar-section">
-        <div class="sidebar-label">Filtrar por</div>
-        <div class="filter-group">
-          <select id="filter-rodovia"><option value="">Todas as rodovias</option></select>
+        <div class="sidebar-label">Filtrar por rodovia / segmento</div>
+        <div class="filter-group mf-wrapper" id="juris-mf-wrapper">
+          <button class="mf-trigger" id="juris-mf-trigger" onclick="mfToggle('juris')">
+            <span class="mf-trigger-label" id="juris-mf-label">Todas as rodovias</span>
+            <span class="mf-trigger-arrow">▼</span>
+          </button>
+          <div class="mf-dropdown" id="juris-mf-dropdown">
+            <div class="mf-search"><input type="text" placeholder="Buscar rodovia..." oninput="mfSearch(this,'juris')"></div>
+            <div class="mf-actions">
+              <button class="mf-action-btn" onclick="mfSelectAll('juris')">Marcar todas</button>
+              <button class="mf-action-btn" onclick="mfClearAll('juris')">Limpar</button>
+            </div>
+            <div id="juris-mf-list"></div>
+          </div>
+          <div class="mf-badges" id="juris-mf-badges"></div>
         </div>
-        <div class="filter-group" id="filter-name-group" style="display:none;">
-          <select id="filter-name"><option value="">Todos os segmentos</option></select>
-        </div>
         <div class="filter-group">
-          <select id="filter-tipo">
+          <select id="filter-tipo" onchange="applyFilters()">
             <option value="">Todos os tipos de pavimento</option>
             <option value="CBUQ">CBUQ — Concreto Betuminoso</option>
             <option value="TSS">TSS — Tratamento Simples</option>
@@ -485,7 +577,7 @@
           </select>
         </div>
         <div class="filter-group">
-          <select id="filter-jurisdicao">
+          <select id="filter-jurisdicao" onchange="applyFilters()">
             <option value="">Todas as jurisdições</option>
             <option value="ESTADUAL">Estadual</option>
             <option value="ESTADUAL COINCIDENTE">Estadual Coincidente</option>
@@ -513,16 +605,21 @@
           <div style="font-size:12px;color:var(--text3)">Índice de Irregularidade Internacional</div>
         </div>
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);">
-          <div class="sidebar-label" style="margin-bottom:8px">Filtrar segmento</div>
-          <div class="filter-group">
-            <select id="iri-filter-rod" onchange="iriFilterRod()">
-              <option value="">Todas as rodovias</option>
-            </select>
-          </div>
-          <div class="filter-group" id="iri-name-group" style="display:none;">
-            <select id="iri-filter-name" onchange="iriFilterName()">
-              <option value="">Todos os segmentos</option>
-            </select>
+          <div class="sidebar-label" style="margin-bottom:8px">Filtrar rodovia / segmento</div>
+          <div class="filter-group mf-wrapper" id="iri-mf-wrapper">
+            <button class="mf-trigger" id="iri-mf-trigger" onclick="mfToggle('iri')">
+              <span class="mf-trigger-label" id="iri-mf-label">Todas as rodovias</span>
+              <span class="mf-trigger-arrow">▼</span>
+            </button>
+            <div class="mf-dropdown" id="iri-mf-dropdown">
+              <div class="mf-search"><input type="text" placeholder="Buscar rodovia..." oninput="mfSearch(this,'iri')"></div>
+              <div class="mf-actions">
+                <button class="mf-action-btn" onclick="mfSelectAll('iri')">Marcar todas</button>
+                <button class="mf-action-btn" onclick="mfClearAll('iri')">Limpar</button>
+              </div>
+              <div id="iri-mf-list"></div>
+            </div>
+            <div class="mf-badges" id="iri-mf-badges"></div>
           </div>
         </div>
         <div class="lvc-ano-btns" id="iri-ano-btns"></div>
@@ -554,17 +651,22 @@
           <div class="sidebar-label" style="margin-bottom:4px">Condição do LVC</div>
           <div style="font-size:12px;color:var(--text3)">Selecione o ano para visualizar</div>
         </div>
-        <div id="lvc-filters" class="active">
-          <div class="sidebar-label" style="margin-bottom:8px">Filtrar segmento</div>
-          <div class="filter-group">
-            <select id="lvc-filter-rod" onchange="lvcFilterRod()">
-              <option value="">Todas as rodovias</option>
-            </select>
-          </div>
-          <div class="filter-group" id="lvc-name-group" style="display:none;">
-            <select id="lvc-filter-name" onchange="lvcFilterName()">
-              <option value="">Todos os segmentos</option>
-            </select>
+        <div id="lvc-filters" class="active" style="padding:12px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:8px">Filtrar rodovia / segmento</div>
+          <div class="mf-wrapper" id="lvc-mf-wrapper">
+            <button class="mf-trigger" id="lvc-mf-trigger" onclick="mfToggle('lvc')">
+              <span class="mf-trigger-label" id="lvc-mf-label">Todas as rodovias</span>
+              <span class="mf-trigger-arrow">▼</span>
+            </button>
+            <div class="mf-dropdown" id="lvc-mf-dropdown">
+              <div class="mf-search"><input type="text" placeholder="Buscar rodovia..." oninput="mfSearch(this,'lvc')"></div>
+              <div class="mf-actions">
+                <button class="mf-action-btn" onclick="mfSelectAll('lvc')">Marcar todas</button>
+                <button class="mf-action-btn" onclick="mfClearAll('lvc')">Limpar</button>
+              </div>
+              <div id="lvc-mf-list"></div>
+            </div>
+            <div class="mf-badges" id="lvc-mf-badges"></div>
           </div>
         </div>
 
@@ -689,24 +791,6 @@ let tileMap, tileSat, tileLabels, isSatellite=false;
 let activeFilters = { situacao: new Set(Object.keys(SITUACAO_CONFIG)), rodovia:'', tipo:'', search:'' };
 let allFeatures = [];
 
-function updateNameFilter() {
-  const r = document.getElementById('filter-rodovia').value;
-  const sel = document.getElementById('filter-name');
-  const group = document.getElementById('filter-name-group');
-  sel.innerHTML = '<option value="">Todos os segmentos</option>';
-  if (!r) { group.style.display='none'; return; }
-  group.style.display='block';
-  const names = allFeatures
-    .filter(f => f.properties.rodovia === r)
-    .map(f => f.properties.name)
-    .filter(Boolean)
-    .sort();
-  names.forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-}
 
 async function initApp() {
   // Carregar dados do servidor
@@ -731,23 +815,11 @@ async function initApp() {
 
   setTimeout(() => { map.invalidateSize(); }, 200);
 
-  // Rodovias
-  const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
-  const sel = document.getElementById('filter-rodovia');
-  rods.forEach(r => { const o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o); });
-
   buildLegend();
   document.getElementById('search-input').addEventListener('input', applyFilters);
-  document.getElementById('filter-rodovia').addEventListener('change', () => {
-    updateNameFilter();
-    applyFilters();
-  });
-  document.getElementById('filter-name').addEventListener('change', applyFilters);
-  document.getElementById('filter-tipo').addEventListener('change', applyFilters);
-  document.getElementById('filter-jurisdicao').addEventListener('change', applyFilters);
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
+  initMultiFilters();
   applyFilters();
-  initLvcFilters();
 }
 
 function toggleLegend() {
@@ -780,15 +852,13 @@ function toggleSit(key,el) {
 
 function applyFilters() {
   const s=document.getElementById('search-input').value.toLowerCase();
-  const r=document.getElementById('filter-rodovia').value;
-  const n=document.getElementById('filter-name').value;
   const t=document.getElementById('filter-tipo').value;
   const j=document.getElementById('filter-jurisdicao').value;
+  const activeNames = mfGetActiveNames('juris');
   const vis = allFeatures.filter(f=>{
     const p=f.properties;
     if(!activeFilters.situacao.has(p.situacao||'PAV')) return false;
-    if(r && p.rodovia!==r) return false;
-    if(n && p.name!==n) return false;
+    if(activeNames && !activeNames.has(p.name)) return false;
     if(t && p.tipo_pav!==t) return false;
     if(j && p.jurisdicao!==j) return false;
     if(s){ const tx=`${p.id} ${p.name} ${p.rodovia} ${p.desc_ini} ${p.desc_fim}`.toLowerCase(); if(!tx.includes(s)) return false; }
@@ -961,9 +1031,6 @@ function toggleLabels() {
 let iriData = null;
 let iriLayerGroup = null;
 let iriCurrentAno = null;
-let iriSelectedRod = '';
-let iriSelectedName = '';
-
 const IRI_COLORS = { 'BOM':'#16a34a', 'REGULAR':'#eab308', 'RUIM':'#f97316' };
 
 async function loadIRI() {
@@ -971,7 +1038,6 @@ async function loadIRI() {
   const res = await fetch('/iri');
   iriData = await res.json();
   buildIriAnoBtns();
-  initIriFilters();
 }
 
 function buildIriAnoBtns() {
@@ -987,43 +1053,13 @@ function buildIriAnoBtns() {
   });
 }
 
-function initIriFilters() {
-  const sel = document.getElementById('iri-filter-rod');
-  const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
-  rods.forEach(r => { const o=document.createElement('option'); o.value=r; o.textContent=r; sel.appendChild(o); });
-}
-
-function iriFilterRod() {
-  iriSelectedRod = document.getElementById('iri-filter-rod').value;
-  iriSelectedName = '';
-  const grp = document.getElementById('iri-name-group');
-  const sel = document.getElementById('iri-filter-name');
-  sel.innerHTML = '<option value="">Todos os segmentos</option>';
-  if (iriSelectedRod && iriData && iriCurrentAno) {
-    grp.style.display = 'block';
-    const features = iriData.data[iriCurrentAno] || [];
-    const names = [...new Set(features.filter(f=>f.properties.rod===iriSelectedRod).map(f=>f.properties.trecho))].sort();
-    names.forEach(n => { const o=document.createElement('option'); o.value=n; o.textContent=n; sel.appendChild(o); });
-  } else { grp.style.display='none'; }
-  renderIRIFiltered();
-}
-
-function iriFilterName() {
-  iriSelectedName = document.getElementById('iri-filter-name').value;
-  renderIRIFiltered();
-  if (iriSelectedName) showIriDiagram(iriSelectedName);
-  else closeDiagram();
-}
-
 function iriSelectAno(ano) {
   iriCurrentAno = ano;
   document.querySelectorAll('#iri-ano-btns .lvc-ano-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.ano===ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
-  if (iriSelectedName) { renderIRIFiltered(); showIriDiagram(iriSelectedName); }
-  else if (iriSelectedRod) renderIRIFiltered();
-  else renderIRI();
+  renderIRI();
 }
 
 function renderIRI() {
@@ -1034,7 +1070,9 @@ function renderIRI() {
   const fill = document.getElementById('iri-progress-fill');
   const txt  = document.getElementById('iri-progress-txt');
   prog.style.display='block'; fill.style.width='0%';
-  const features = iriData.data[iriCurrentAno] || [];
+  const activeNamesIri = mfGetActiveNames('iri');
+  let features = iriData.data[iriCurrentAno] || [];
+  if (activeNamesIri) features = features.filter(f=>activeNamesIri.has(f.properties.trecho));
   const total = features.length; let done=0;
   function batch(start) {
     const end = Math.min(start+500, total);
@@ -1068,12 +1106,8 @@ function renderIRIFiltered() {
   if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
   iriLayerGroup.clearLayers();
   let features = iriData.data[iriCurrentAno] || [];
-  if (iriSelectedRod) features = features.filter(f=>f.properties.rod===iriSelectedRod);
-  if (iriSelectedName) {
-    features = features.filter(f=>f.properties.trecho===iriSelectedName);
-    const rf = allFeatures.find(f=>f.properties.name===iriSelectedName);
-    if (rf) map.fitBounds(L.polyline(rf.geometry.coordinates.map(c=>[c[1],c[0]])).getBounds(),{padding:[60,60]});
-  }
+  const activeNames = mfGetActiveNames('iri');
+  if (activeNames) features = features.filter(f=>activeNames.has(f.properties.trecho));
   features.forEach(f=>{
     const color=IRI_COLORS[f.properties.condicao]||'#94a3b8';
     const line=L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:4,opacity:0.95,smoothFactor:1});
@@ -1132,84 +1166,207 @@ function closeInfo() {
   selectedId=null;
 }
 
-// ── Filtros no modo LVC ──────────────────────────────────────────────────────
-let lvcSelectedRod = '';
-let lvcSelectedName = '';
+// ── SISTEMA DE FILTRO MÚLTIPLO ─────────────────────────────────────────────────
+const mfState = { juris: {}, lvc: {}, iri: {} };
 
-function initLvcFilters() {
-  // Popular rodovias a partir do roads_data
-  const sel = document.getElementById('lvc-filter-rod');
+function initMultiFilters() {
   const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
-  rods.forEach(r => {
-    const o = document.createElement('option');
-    o.value = r; o.textContent = r; sel.appendChild(o);
+  ['juris','lvc','iri'].forEach(modo => mfBuildList(modo, rods));
+}
+
+function mfBuildList(modo, rods) {
+  const list = document.getElementById(modo+'-mf-list');
+  if (!list) return;
+  list.innerHTML = '';
+  rods.forEach(rod => {
+    const segs = allFeatures.filter(f=>f.properties.rodovia===rod && f.properties.name).map(f=>f.properties.name);
+    const uniqSegs = [...new Set(segs)].sort();
+    const item = document.createElement('div');
+    item.className = 'mf-rod-item'; item.dataset.rod = rod;
+    const hdr = document.createElement('div');
+    hdr.className = 'mf-rod-header';
+    hdr.innerHTML = '<input type="checkbox" class="mf-rod-cb" checked>' +
+      '<span class="mf-rod-name">'+rod+'</span>' +
+      (uniqSegs.length > 1 ? '<button class="mf-rod-toggle" onclick="mfToggleSegs(event,this)">▶ segs</button>' : '');
+    hdr.querySelector('.mf-rod-cb').addEventListener('change', function(e) {
+      e.stopPropagation(); mfRodToggle(modo, rod, this.checked);
+    });
+    hdr.addEventListener('click', function(e) {
+      if (e.target.tagName==='INPUT'||e.target.tagName==='BUTTON') return;
+      const cb=this.querySelector('.mf-rod-cb'); cb.checked=!cb.checked; mfRodToggle(modo,rod,cb.checked);
+    });
+    item.appendChild(hdr);
+    if (uniqSegs.length > 1) {
+      const segsDiv = document.createElement('div');
+      segsDiv.className = 'mf-segs';
+      uniqSegs.forEach(seg => {
+        const si = document.createElement('div');
+        si.className = 'mf-seg-item'; si.dataset.seg = seg;
+        si.innerHTML = '<input type="checkbox" class="mf-seg-cb" checked><span>'+seg+'</span>';
+        si.querySelector('.mf-seg-cb').addEventListener('change', function(e) {
+          e.stopPropagation(); mfSegToggle(modo, rod, seg, this.checked);
+        });
+        si.addEventListener('click', function(e) {
+          if (e.target.tagName==='INPUT') return;
+          const cb=this.querySelector('.mf-seg-cb'); cb.checked=!cb.checked; mfSegToggle(modo,rod,seg,cb.checked);
+        });
+        segsDiv.appendChild(si);
+      });
+      item.appendChild(segsDiv);
+    }
+    list.appendChild(item);
   });
 }
 
-function lvcFilterRod() {
-  lvcSelectedRod = document.getElementById('lvc-filter-rod').value;
-  lvcSelectedName = '';
-  const nameGroup = document.getElementById('lvc-name-group');
-  const nameSel = document.getElementById('lvc-filter-name');
-  nameSel.innerHTML = '<option value="">Todos os segmentos</option>';
-  if (lvcSelectedRod && lvcData && currentAno) {
-    nameGroup.style.display = 'block';
-    // Pegar names únicos do LVC para essa rodovia
-    const features = lvcData.data[currentAno] || [];
-    const matched = allFeatures.filter(f => f.properties.rodovia === lvcSelectedRod);
-    const names = [...new Set(matched.map(f => f.properties.name).filter(Boolean))].sort();
-    names.forEach(n => {
-      const o = document.createElement('option');
-      o.value = n; o.textContent = n; nameSel.appendChild(o);
-    });
-  } else {
-    nameGroup.style.display = 'none';
-  }
-  renderLVCFiltered();
-  closeDiagram();
+function mfToggleSegs(e, btn) {
+  e.stopPropagation();
+  const segsDiv = btn.closest('.mf-rod-item').querySelector('.mf-segs');
+  segsDiv.classList.toggle('open');
+  btn.textContent = segsDiv.classList.contains('open') ? '▼ segs' : '▶ segs';
 }
 
-function lvcFilterName() {
-  lvcSelectedName = document.getElementById('lvc-filter-name').value;
-  renderLVCFiltered();
-  if (lvcSelectedName) showDiagram(lvcSelectedName);
-  else closeDiagram();
+function mfRodToggle(modo, rod, checked) {
+  const list = document.getElementById(modo+'-mf-list');
+  const item = list && [...list.querySelectorAll('.mf-rod-item')].find(i=>i.dataset.rod===rod);
+  if (checked) {
+    delete mfState[modo][rod];
+    if (item) { item.querySelector('.mf-rod-cb').checked=true; item.querySelectorAll('.mf-seg-cb').forEach(cb=>cb.checked=true); }
+  } else {
+    mfState[modo][rod] = new Set();
+    if (item) { item.querySelector('.mf-rod-cb').checked=false; item.querySelectorAll('.mf-seg-cb').forEach(cb=>cb.checked=false); }
+  }
+  mfUpdateBadges(modo); mfApply(modo);
 }
+
+function mfSegToggle(modo, rod, seg, checked) {
+  if (!mfState[modo][rod]) {
+    const allSegs = [...new Set(allFeatures.filter(f=>f.properties.rodovia===rod&&f.properties.name).map(f=>f.properties.name))];
+    mfState[modo][rod] = new Set(allSegs);
+  }
+  if (checked) mfState[modo][rod].add(seg); else mfState[modo][rod].delete(seg);
+  const list = document.getElementById(modo+'-mf-list');
+  const item = list && [...list.querySelectorAll('.mf-rod-item')].find(i=>i.dataset.rod===rod);
+  if (item) {
+    const total = item.querySelectorAll('.mf-seg-cb').length;
+    const checked2 = [...item.querySelectorAll('.mf-seg-cb')].filter(cb=>cb.checked).length;
+    const rodCb = item.querySelector('.mf-rod-cb');
+    rodCb.checked = checked2 > 0; rodCb.indeterminate = checked2>0 && checked2<total;
+    if (checked2===0) mfState[modo][rod] = new Set();
+  }
+  mfUpdateBadges(modo); mfApply(modo);
+}
+
+function mfSelectAll(modo) {
+  mfState[modo] = {};
+  const list = document.getElementById(modo+'-mf-list');
+  if (list) list.querySelectorAll('.mf-rod-cb,.mf-seg-cb').forEach(cb=>{cb.checked=true;cb.indeterminate=false;});
+  mfUpdateBadges(modo); mfApply(modo);
+}
+
+function mfClearAll(modo) {
+  const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))];
+  rods.forEach(r => mfState[modo][r] = new Set());
+  const list = document.getElementById(modo+'-mf-list');
+  if (list) list.querySelectorAll('.mf-rod-cb,.mf-seg-cb').forEach(cb=>{cb.checked=false;cb.indeterminate=false;});
+  mfUpdateBadges(modo); mfApply(modo);
+}
+
+function mfSearch(input, modo) {
+  const q = input.value.toLowerCase();
+  const list = document.getElementById(modo+'-mf-list');
+  if (!list) return;
+  list.querySelectorAll('.mf-rod-item').forEach(item => {
+    item.style.display = item.dataset.rod.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+function mfToggle(modo) {
+  const dd = document.getElementById(modo+'-mf-dropdown');
+  const tr = document.getElementById(modo+'-mf-trigger');
+  const isOpen = dd.classList.contains('open');
+  document.querySelectorAll('.mf-dropdown').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.mf-trigger').forEach(t=>t.classList.remove('open'));
+  if (!isOpen) { dd.classList.add('open'); tr.classList.add('open'); }
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.mf-wrapper')) {
+    document.querySelectorAll('.mf-dropdown').forEach(d=>d.classList.remove('open'));
+    document.querySelectorAll('.mf-trigger').forEach(t=>t.classList.remove('open'));
+  }
+});
+
+function mfUpdateBadges(modo) {
+  const badges = document.getElementById(modo+'-mf-badges');
+  const label  = document.getElementById(modo+'-mf-label');
+  if (!badges) return;
+  badges.innerHTML = '';
+  const deselRods = Object.keys(mfState[modo]);
+  const zeroRods = deselRods.filter(r => mfState[modo][r] && mfState[modo][r].size===0);
+  const partialRods = deselRods.filter(r => {
+    if (!mfState[modo][r] || mfState[modo][r].size===0) return false;
+    const total = [...new Set(allFeatures.filter(f=>f.properties.rodovia===r&&f.properties.name).map(f=>f.properties.name))].length;
+    return mfState[modo][r].size < total;
+  });
+  if (zeroRods.length===0 && partialRods.length===0) {
+    label.textContent='Todas as rodovias'; label.classList.remove('has-sel'); return;
+  }
+  label.textContent = (zeroRods.length ? zeroRods.length+' oculta(s)' : '') +
+    (zeroRods.length && partialRods.length ? ', ' : '') +
+    (partialRods.length ? partialRods.length+' parcial(is)' : '');
+  label.classList.add('has-sel');
+  zeroRods.forEach(rod => {
+    const b = document.createElement('div'); b.className='mf-badge';
+    b.innerHTML='🚫 '+rod+' <span class="mf-badge-x" onclick="mfRodToggle(''+modo+'',''+rod+'',true)">×</span>';
+    badges.appendChild(b);
+  });
+  partialRods.forEach(rod => {
+    mfState[modo][rod].forEach(seg => {
+      const b = document.createElement('div'); b.className='mf-badge';
+      b.innerHTML='✓ '+seg+' <span class="mf-badge-x" onclick="mfSegToggle(''+modo+'',''+rod+'',''+seg+'',false)">×</span>';
+      badges.appendChild(b);
+    });
+  });
+}
+
+function mfGetActiveNames(modo) {
+  const deselRods = Object.keys(mfState[modo]);
+  if (deselRods.length===0) return null;
+  const allNames = new Set(allFeatures.filter(f=>f.properties.name).map(f=>f.properties.name));
+  deselRods.forEach(rod => {
+    const segsRod = allFeatures.filter(f=>f.properties.rodovia===rod&&f.properties.name).map(f=>f.properties.name);
+    if (!mfState[modo][rod] || mfState[modo][rod].size===0) {
+      segsRod.forEach(s=>allNames.delete(s));
+    } else {
+      segsRod.forEach(s=>{ if (!mfState[modo][rod].has(s)) allNames.delete(s); });
+    }
+  });
+  return allNames;
+}
+
+function mfApply(modo) {
+  if (modo==='juris') applyFilters();
+  else if (modo==='lvc') { if (currentAno) renderLVC(); }
+  else if (modo==='iri') { if (iriCurrentAno) renderIRI(); }
+}
+
+// ── Aliases mantidos ─────────────────────────────────────────────────────────
+function initLvcFilters() { /* substituído por initMultiFilters */ }
 
 function renderLVCFiltered() {
   if (!lvcData || !currentAno) return;
   if (!lvcLayerGroup) lvcLayerGroup = L.layerGroup().addTo(map);
   lvcLayerGroup.clearLayers();
   let features = lvcData.data[currentAno] || [];
-  if (lvcSelectedRod) {
-    const matched = new Set(
-      allFeatures.filter(f => f.properties.rodovia === lvcSelectedRod).map(f => f.properties.name)
-    );
-    features = features.filter(f => matched.has(f.properties.trecho));
-  }
-  if (lvcSelectedName) {
-    // Mostrar só D0 e E0 do name selecionado
-    const base = lvcSelectedName.slice(0,-2);
-    features = features.filter(f => f.properties.trecho.startsWith(base));
-    // Zoom no segmento
-    const roadFeat = allFeatures.find(f => f.properties.name === lvcSelectedName);
-    if (roadFeat) {
-      const coords = roadFeat.geometry.coordinates.map(c=>[c[1],c[0]]);
-      map.fitBounds(L.polyline(coords).getBounds(), {padding:[60,60]});
-    }
+  const activeNames = mfGetActiveNames('lvc');
+  if (activeNames) {
+    const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
+    features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
   }
   features.forEach(f => {
     const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
-    const line = L.polyline(
-      f.geometry.coordinates.map(c=>[c[1],c[0]]),
-      {color, weight:4, opacity:0.95, smoothFactor:1}
-    );
-    line.bindTooltip(
-      '<b>'+f.properties.trecho+'</b><br>'+
-      'km '+(f.properties.km_ini/1000).toFixed(2)+' – '+(f.properties.km_fim/1000).toFixed(2)+'<br>'+
-      '<span style="color:'+color+';font-weight:700">'+f.properties.conceito+'</span>',
-      {sticky:true}
-    );
+    const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:4,opacity:0.95,smoothFactor:1});
+    line.bindTooltip('<b>'+f.properties.trecho+'</b><br>km '+(f.properties.km_ini/1000).toFixed(2)+' – '+(f.properties.km_fim/1000).toFixed(2)+'<br><span style="color:'+color+';font-weight:700">'+f.properties.conceito+'</span>',{sticky:true});
     line.addTo(lvcLayerGroup);
   });
 }
@@ -1353,14 +1510,7 @@ function selectAno(ano) {
     b.classList.toggle('active', b.dataset.ano === ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano === ano ? 'Ativo' : 'Clique para visualizar';
   });
-  if (lvcSelectedName) {
-    renderLVCFiltered();
-    showDiagram(lvcSelectedName);
-  } else if (lvcSelectedRod) {
-    renderLVCFiltered();
-  } else {
-    renderLVC();
-  }
+  renderLVC();
 }
 
 function setModo(modo) {
@@ -1424,7 +1574,12 @@ function renderLVC() {
   fill.style.width = '0%';
   txt.textContent = 'Carregando ' + currentAno + '...';
 
-  const features = lvcData.data[currentAno] || [];
+  const activeNames = mfGetActiveNames('lvc');
+  let features = lvcData.data[currentAno] || [];
+  if (activeNames) {
+    const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
+    features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
+  }
   const total = features.length;
   let done = 0;
 
