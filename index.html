@@ -416,15 +416,15 @@
   .mf-seg-item:hover { background:#e8f4f8; }
   .mf-seg-cb { width:14px; height:14px; cursor:pointer; accent-color:var(--teal); flex-shrink:0; }
 
-  .mf-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; min-height:0; }
-  .mf-badge {
-    display:flex; align-items:center; gap:4px;
-    background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;
-    font-size:11px; font-weight:600; padding:2px 7px 2px 8px;
-    border-radius:10px;
+  .mf-clear-btn {
+    display:none; width:100%; margin-top:6px;
+    padding:7px 12px; font-size:12px; font-weight:600;
+    color:#dc2626; background:#fef2f2; border:1.5px solid #fecaca;
+    border-radius:var(--radius); cursor:pointer; text-align:center;
+    transition:all 0.15s;
   }
-  .mf-badge-x { cursor:pointer; font-size:13px; line-height:1; color:#0369a1; opacity:0.6; }
-  .mf-badge-x:hover { opacity:1; }
+  .mf-clear-btn:hover { background:#fee2e2; border-color:#f87171; }
+  .mf-clear-btn.visible { display:block; }
 
   /* Responsivo mobile */
   @media (max-width: 768px) {
@@ -561,8 +561,8 @@
             </div>
             <div id="juris-mf-list"></div>
           </div>
-          <div class="mf-badges" id="juris-mf-badges"></div>
         </div>
+        <button class="mf-clear-btn" id="juris-mf-clear" onclick="mfSelectAll('juris')">✕ Limpar filtro de rodovias</button>
         <div class="filter-group">
           <select id="filter-tipo" onchange="applyFilters()">
             <option value="">Todos os tipos de pavimento</option>
@@ -619,8 +619,8 @@
               </div>
               <div id="iri-mf-list"></div>
             </div>
-            <div class="mf-badges" id="iri-mf-badges"></div>
           </div>
+          <button class="mf-clear-btn" id="iri-mf-clear" onclick="mfSelectAll('iri')">✕ Limpar filtro de rodovias</button>
         </div>
         <div class="lvc-ano-btns" id="iri-ano-btns"></div>
         <div class="lvc-progress" id="iri-progress">
@@ -666,8 +666,8 @@
               </div>
               <div id="lvc-mf-list"></div>
             </div>
-            <div class="mf-badges" id="lvc-mf-badges"></div>
           </div>
+          <button class="mf-clear-btn" id="lvc-mf-clear" onclick="mfSelectAll('lvc')">✕ Limpar filtro de rodovias</button>
         </div>
 
         <div class="lvc-ano-btns" id="lvc-ano-btns">
@@ -1298,10 +1298,10 @@ document.addEventListener('click', function(e) {
 });
 
 function mfUpdateBadges(modo) {
-  const badges = document.getElementById(modo+'-mf-badges');
-  const label  = document.getElementById(modo+'-mf-label');
-  if (!badges) return;
-  badges.innerHTML = '';
+  const label   = document.getElementById(modo+'-mf-label');
+  const clearBtn = document.getElementById(modo+'-mf-clear');
+  if (!label) return;
+
   const deselRods = Object.keys(mfState[modo]);
   const zeroRods = deselRods.filter(r => mfState[modo][r] && mfState[modo][r].size===0);
   const partialRods = deselRods.filter(r => {
@@ -1309,29 +1309,23 @@ function mfUpdateBadges(modo) {
     const total = [...new Set(allFeatures.filter(f=>f.properties.rodovia===r&&f.properties.name).map(f=>f.properties.name))].length;
     return mfState[modo][r].size < total;
   });
-  if (zeroRods.length===0 && partialRods.length===0) {
-    label.textContent='Todas as rodovias'; label.classList.remove('has-sel'); return;
+
+  const semFiltro = zeroRods.length===0 && partialRods.length===0;
+
+  if (semFiltro) {
+    label.textContent = 'Todas as rodovias';
+    label.classList.remove('has-sel');
+    if (clearBtn) clearBtn.classList.remove('visible');
+    return;
   }
-  label.textContent = (zeroRods.length ? zeroRods.length+' oculta(s)' : '') +
-    (zeroRods.length && partialRods.length ? ', ' : '') +
-    (partialRods.length ? partialRods.length+' parcial(is)' : '');
+
+  // Montar texto resumido
+  const partes = [];
+  if (zeroRods.length) partes.push(zeroRods.length + ' rodovia(s) oculta(s)');
+  if (partialRods.length) partes.push(partialRods.length + ' rodovia(s) com seleção parcial');
+  label.textContent = partes.join(' · ');
   label.classList.add('has-sel');
-  zeroRods.forEach(rod => {
-    const b = document.createElement('div'); b.className='mf-badge';
-    const bx1=document.createElement('span'); bx1.className='mf-badge-x'; bx1.textContent='×';
-    bx1.onclick=()=>mfRodToggle(modo,rod,true);
-    b.innerHTML='🚫 '+rod+' '; b.appendChild(bx1);
-    badges.appendChild(b);
-  });
-  partialRods.forEach(rod => {
-    mfState[modo][rod].forEach(seg => {
-      const b = document.createElement('div'); b.className='mf-badge';
-      const bx=document.createElement('span'); bx.className='mf-badge-x'; bx.textContent='×';
-      bx.onclick=((_m,_r,_s)=>()=>mfSegToggle(_m,_r,_s,false))(modo,rod,seg);
-      b.textContent='✓ '+seg+' '; b.appendChild(bx);
-      badges.appendChild(b);
-    });
-  });
+  if (clearBtn) clearBtn.classList.add('visible');
 }
 
 function mfGetActiveNames(modo) {
