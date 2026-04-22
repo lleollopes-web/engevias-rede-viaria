@@ -277,7 +277,9 @@
   .lvc-panel { display:none !important; flex-direction:column; height:100%; overflow-y:auto; }
   .lvc-panel.active { display:flex !important; }
   #lvc-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
+  #lvc-panel.active { display:flex; }
   #iri-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
+  #iri-panel.active { display:flex; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
     padding:12px 16px; border-radius:10px; border:2px solid var(--border);
@@ -1349,19 +1351,19 @@ function selectAno(ano) {
 
 function setModo(modo) {
   currentModo = modo;
-  const lvcPanel   = document.getElementById('lvc-panel');
-  const segList    = document.getElementById('segments-list');
-  const listHdr    = document.getElementById('list-header');
-  const jurisFilts = document.getElementById('juris-filters');
+
+  // Reset todos os painéis
+  document.getElementById('lvc-panel').classList.remove('active');
+  document.getElementById('iri-panel').classList.remove('active');
+  document.getElementById('segments-list').style.display = 'none';
+  document.getElementById('list-header').style.display = 'none';
+  document.getElementById('juris-filters').style.display = 'none';
+  layerGroup.clearLayers();
+  if (lvcLayerGroup) lvcLayerGroup.clearLayers();
+  if (iriLayerGroup) iriLayerGroup.clearLayers();
+  closeDiagram();
 
   if (modo === 'iri') {
-    lvcPanel.classList.remove('active');
-    segList.style.display   = 'none';
-    listHdr.style.display   = 'none';
-    jurisFilts.style.display = 'none';
-    layerGroup.clearLayers();
-    if (lvcLayerGroup) lvcLayerGroup.clearLayers();
-    closeDiagram();
     document.getElementById('iri-panel').classList.add('active');
     loadIRI();
     return;
