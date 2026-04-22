@@ -276,8 +276,8 @@
   /* LVC Panel */
   .lvc-panel { display:none !important; flex-direction:column; height:100%; overflow-y:auto; }
   .lvc-panel.active { display:flex !important; }
-  #lvc-panel { display:none; }
-  #iri-panel { display:none; }
+  #lvc-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
+  #iri-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
     padding:12px 16px; border-radius:10px; border:2px solid var(--border);
@@ -503,7 +503,7 @@
       </div><!-- /juris-filters -->
 
       <!-- Painel IRI -->
-      <div id="iri-panel" style="display:none!important;flex-direction:column;height:100%;overflow-y:auto;">
+      <div id="iri-panel">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:4px">Condição do IRI</div>
           <div style="font-size:12px;color:var(--text3)">Índice de Irregularidade Internacional</div>
@@ -545,7 +545,7 @@
       <div class="segments-list" id="segments-list"></div>
 
       <!-- Painel LVC (com scroll) -->
-      <div id="lvc-panel" style="display:none!important;flex-direction:column;height:100%;overflow-y:auto;">
+      <div id="lvc-panel">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:4px">Condição do LVC</div>
           <div style="font-size:12px;color:var(--text3)">Selecione o ano para visualizar</div>
