@@ -1060,6 +1060,12 @@ function iriSelectAno(ano) {
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
   renderIRI();
+  const activeNamesIri = mfGetActiveNames('iri');
+  if (activeNamesIri && activeNamesIri.size === 1) {
+    showIriDiagram([...activeNamesIri][0]);
+  } else {
+    closeDiagram();
+  }
 }
 
 function renderIRI() {
@@ -1345,8 +1351,26 @@ function mfGetActiveNames(modo) {
 
 function mfApply(modo) {
   if (modo==='juris') applyFilters();
-  else if (modo==='lvc') { if (currentAno) renderLVC(); }
-  else if (modo==='iri') { if (iriCurrentAno) renderIRI(); }
+  else if (modo==='lvc') {
+    if (currentAno) renderLVC();
+    // Mostrar diagrama se exatamente 1 segmento estiver ativo
+    const activeNames = mfGetActiveNames('lvc');
+    if (activeNames && activeNames.size === 1) {
+      showDiagram([...activeNames][0]);
+    } else {
+      closeDiagram();
+    }
+  }
+  else if (modo==='iri') {
+    if (iriCurrentAno) renderIRI();
+    // Mostrar diagrama se exatamente 1 segmento estiver ativo
+    const activeNamesIri = mfGetActiveNames('iri');
+    if (activeNamesIri && activeNamesIri.size === 1) {
+      showIriDiagram([...activeNamesIri][0]);
+    } else {
+      closeDiagram();
+    }
+  }
 }
 
 // ── Aliases mantidos ─────────────────────────────────────────────────────────
@@ -1504,12 +1528,17 @@ function buildAnoBtns() {
 
 function selectAno(ano) {
   currentAno = ano;
-  // Atualizar botões
   document.querySelectorAll('.lvc-ano-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.ano === ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano === ano ? 'Ativo' : 'Clique para visualizar';
   });
   renderLVC();
+  const activeNames = mfGetActiveNames('lvc');
+  if (activeNames && activeNames.size === 1) {
+    showDiagram([...activeNames][0]);
+  } else {
+    closeDiagram();
+  }
 }
 
 function setModo(modo) {
