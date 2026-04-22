@@ -440,6 +440,8 @@
           <option value="jurisdicao">Situação Geral</option>
           <option value="lvc">Condição do LVC</option>
           <option value="iri">Condição do IRI</option>
+          <option value="fwd">Condição FWD</option>
+          <option value="recfuncional">Recuperação Funcional</option>
         </select>
       </div>
 
@@ -888,6 +890,18 @@ function showInfo(p) {
     `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
   ).join('');
   document.getElementById('info-panel').classList.add('active');
+}
+
+function openDevModal(titulo) {
+  document.getElementById('dev-modal-title').textContent = titulo;
+  document.getElementById('dev-modal').style.display = 'flex';
+}
+function closeDevModal() {
+  document.getElementById('dev-modal').style.display = 'none';
+  // Volta para Situação Geral
+  const sel = document.getElementById('modo-select');
+  sel.value = 'jurisdicao';
+  setModo('jurisdicao');
 }
 
 function showIriPopup() {
@@ -1368,6 +1382,14 @@ function setModo(modo) {
     loadIRI();
     return;
   }
+  if (modo === 'fwd') {
+    openDevModal('Condição FWD');
+    return;
+  }
+  if (modo === 'recfuncional') {
+    openDevModal('Recuperação Funcional');
+    return;
+  }
   if (modo === 'lvc') {
     document.getElementById('lvc-panel').classList.add('active');
     document.getElementById('segments-list').style.display   = 'none';
@@ -1456,7 +1478,24 @@ function renderLVC() {
     </div>
     <div id="diag-content"></div>
   </div>
-  <!-- Modal IRI -->
+  <!-- Modal Em Desenvolvimento -->
+  <div id="dev-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:20px;padding:44px 48px;text-align:center;max-width:400px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.28);animation:fadeUp 0.3s ease;position:relative;">
+      <div style="font-size:56px;margin-bottom:6px;line-height:1;">⚙️</div>
+      <div style="font-size:28px;margin-bottom:16px;">👷</div>
+      <div id="dev-modal-title" style="font-family:'Inter Tight',sans-serif;font-size:21px;font-weight:700;color:#1a2940;margin-bottom:10px;"></div>
+      <div style="font-size:14px;color:#7a95b0;line-height:1.7;margin-bottom:28px;">
+        Este módulo está em processo de criação<br>e estará disponível em breve.
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px;">
+        <span style="font-size:22px;">🔧</span>
+        <span style="font-size:22px;">📐</span>
+        <span style="font-size:22px;">💻</span>
+        <span style="font-size:22px;">🛣️</span>
+      </div>
+      <button onclick="closeDevModal()" style="background:linear-gradient(135deg,#1a3a5c,#1e7fa0);border:none;border-radius:10px;padding:13px 40px;color:#fff;font-family:'Inter',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(26,58,92,0.25);transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">OK, entendido</button>
+    </div>
+  </div>
   <div id="iri-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:16px;padding:40px 48px;text-align:center;max-width:360px;box-shadow:0 16px 48px rgba(0,0,0,0.25);animation:fadeUp 0.3s ease;">
       <div style="font-size:48px;margin-bottom:16px;">⚙️</div>
