@@ -1422,52 +1422,27 @@ function haversineM(lat1, lon1, lat2, lon2) {
 
 // Ponto mais próximo em uma polilinha e distância acumulada até ele
 function nearestPointOnPolyline(latlng, coords, kmIni, kmFim) {
-  function calcAccum(ordCoords) {
-    let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
-    for (let i = 0; i < ordCoords.length - 1; i++) {
-      const [la1,lo1] = ordCoords[i];
-      const [la2,lo2] = ordCoords[i+1];
-      const segLen = haversineM(la1,lo1,la2,lo2);
-      const dx = lo2-lo1, dy = la2-la1;
-      let t = 0;
-      if (segLen > 0) {
-        t = ((latlng.lng-lo1)*dx + (latlng.lat-la1)*dy) / (dx*dx+dy*dy);
-        t = Math.max(0, Math.min(1, t));
-      }
-      const projLat = la1+t*dy, projLon = lo1+t*dx;
-      const d = haversineM(latlng.lat, latlng.lng, projLat, projLon);
-      if (d < bestDist) { bestDist = d; bestAccum = accumTotal + haversineM(la1,lo1,projLat,projLon); }
-      accumTotal += segLen;
+  // Sempre usar coords na ordem original (FWD) — sentido correto nos dados
+  let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [la1,lo1] = coords[i];
+    const [la2,lo2] = coords[i+1];
+    const segLen = haversineM(la1,lo1,la2,lo2);
+    const dx = lo2-lo1, dy = la2-la1;
+    let t = 0;
+    if (segLen > 0) {
+      t = ((latlng.lng-lo1)*dx + (latlng.lat-la1)*dy) / (dx*dx+dy*dy);
+      t = Math.max(0, Math.min(1, t));
     }
-    return { dist: bestDist, accum: bestAccum, total: accumTotal };
+    const projLat = la1+t*dy, projLon = lo1+t*dx;
+    const d = haversineM(latlng.lat, latlng.lng, projLat, projLon);
+    if (d < bestDist) { bestDist = d; bestAccum = accumTotal + haversineM(la1,lo1,projLat,projLon); }
+    accumTotal += segLen;
   }
-
-  const fwd = calcAccum(coords);
-  const rev = calcAccum([...coords].reverse());
-
-  // Usar proporção accum/total para mapear linearmente ao km real
-  // Isso elimina o problema de sentido: propFwd = 0 no início, 1 no fim
-  const propFwd = fwd.total > 0 ? fwd.accum / fwd.total : 0;
-  const propRev = rev.total > 0 ? rev.accum / rev.total : 0;
-
-  // km resultante em cada sentido
-  const kmFwd = kmIni + propFwd * (kmFim - kmIni);
-  const kmRev = kmIni + propRev * (kmFim - kmIni);
-
-  // Ambos deveriam estar no intervalo [min,max] — escolher pelo menor erro de distância
-  // mas TAMBÉM verificar qual produz km crescente (dentro do range)
-  const kmMin = Math.min(kmIni, kmFim);
-  const kmMax = Math.max(kmIni, kmFim);
-  const fwdOk = kmFwd >= kmMin - 0.05 && kmFwd <= kmMax + 0.05;
-  const revOk = kmRev >= kmMin - 0.05 && kmRev <= kmMax + 0.05;
-
-  let kmFinal, dist;
-  if (fwdOk && !revOk)       { kmFinal = kmFwd; dist = fwd.dist; }
-  else if (revOk && !fwdOk)  { kmFinal = kmRev; dist = rev.dist; }
-  else if (fwd.dist <= rev.dist) { kmFinal = kmFwd; dist = fwd.dist; }
-  else                        { kmFinal = kmRev; dist = rev.dist; }
-
-  return { dist, kmFinal, total: fwd.total };
+  // Proporção 0→1 ao longo da linha, mapeada linearmente para km_ini→km_fim
+  const prop = accumTotal > 0 ? bestAccum / accumTotal : 0;
+  const kmFinal = kmIni + prop * (kmFim - kmIni);
+  return { dist: bestDist, kmFinal, total: accumTotal };
 }
 
 function toggleKmMode() {
