@@ -426,6 +426,36 @@
   .mf-clear-btn:hover { background:#fee2e2; border-color:#f87171; }
   .mf-clear-btn.visible { display:block; }
 
+  /* ===== TOOLTIP KM REAL-TIME ===== */
+  #km-tooltip {
+    display:none; position:fixed; z-index:2000;
+    background:#1a2940; color:#fff;
+    border-radius:10px; padding:10px 16px;
+    font-family:'Inter',sans-serif; font-size:13px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.35);
+    pointer-events:none; white-space:nowrap;
+    border-left:4px solid var(--teal);
+    min-width:180px;
+  }
+  #km-tooltip .kt-road { font-size:11px; color:#7fb3c8; font-weight:600; letter-spacing:0.5px; margin-bottom:2px; }
+  #km-tooltip .kt-km { font-size:22px; font-weight:800; color:#fff; line-height:1.1; }
+  #km-tooltip .kt-seg { font-size:11px; color:#94a3b8; margin-top:2px; }
+
+  #km-btn {
+    position:absolute; bottom:32px; right:16px; z-index:1000;
+    background:#fff; border:2px solid #ccc; border-radius:10px;
+    padding:8px 14px; font-family:'Inter',sans-serif; font-size:12px;
+    font-weight:700; cursor:pointer; display:flex; align-items:center;
+    gap:6px; box-shadow:0 2px 8px rgba(0,0,0,0.15); transition:all 0.2s;
+    color:#1a2940;
+  }
+  #km-btn:hover { border-color:var(--teal); color:var(--teal); }
+  #km-btn.active { background:var(--teal); border-color:var(--teal); color:#fff; }
+  #km-btn .km-btn-icon { font-size:15px; }
+
+  /* Cursor crosshair quando modo km ativo */
+  .km-mode-active .leaflet-container { cursor:crosshair !important; }
+
   /* Responsivo mobile */
   @media (max-width: 768px) {
     /* Header compacto */
@@ -812,6 +842,8 @@ async function initApp() {
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
+  map.on('mousemove', onMapMouseMove);
+  map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
 
   setTimeout(() => { map.invalidateSize(); }, 200);
 
@@ -868,7 +900,7 @@ function applyFilters() {
 }
 
 function renderMap(features) {
-  layerGroup.clearLayers(); layerMap={};
+  layerGroup.clearLayers(); layerMap={}; kmFeatures=[];
   const isMobile = window.innerWidth <= 768;
   features.forEach(f=>{
     const p=f.properties;
@@ -885,6 +917,7 @@ function renderMap(features) {
     const hitWidth = isMobile ? 20 : cfg.width + 4;
     const hit = L.polyline(coords,
       {color:'transparent', weight:hitWidth, opacity:0, smoothFactor:1});
+    hit._kmFeature = f; // referência para o KM real-time
     hit.on('click', ()=>showInfo(p));
     hit.on('mouseover', function(){
       line.setStyle({weight:cfg.width+2, opacity:1});
@@ -894,6 +927,7 @@ function renderMap(features) {
       line.setStyle({weight:cfg.width, opacity:0.85});
     });
     hit.addTo(layerGroup);
+    if (kmModeActive) kmFeatures.push(f);
   });
 }
 
@@ -1373,6 +1407,110 @@ function mfApply(modo) {
   }
 }
 
+// ── KM Real-Time ─────────────────────────────────────────────────────────────
+let kmModeActive = false;
+let kmFeatures = []; // cache das features com coords lat/lng
+
+// Calcular distância em metros entre 2 pontos lat/lng (Haversine simplificado)
+function haversineM(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// Ponto mais próximo em uma polilinha e distância acumulada até ele
+function nearestPointOnPolyline(latlng, coords) {
+  let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [la1,lo1] = coords[i];
+    const [la2,lo2] = coords[i+1];
+    const segLen = haversineM(la1,lo1,la2,lo2);
+    // Projeção do ponto no segmento
+    const dx = lo2-lo1, dy = la2-la1;
+    let t = 0;
+    if (segLen > 0) {
+      t = ((latlng.lng-lo1)*dx + (latlng.lat-la1)*dy) / (dx*dx+dy*dy);
+      t = Math.max(0, Math.min(1, t));
+    }
+    const projLat = la1 + t*dy, projLon = lo1 + t*dx;
+    const d = haversineM(latlng.lat, latlng.lng, projLat, projLon);
+    if (d < bestDist) {
+      bestDist = d;
+      bestAccum = accumTotal + haversineM(la1,lo1,projLat,projLon);
+    }
+    accumTotal += segLen;
+  }
+  return { dist: bestDist, accum: bestAccum, total: accumTotal };
+}
+
+function toggleKmMode() {
+  kmModeActive = !kmModeActive;
+  const btn = document.getElementById('km-btn');
+  const lbl = document.getElementById('km-btn-label');
+  const appEl = document.getElementById('app');
+  if (kmModeActive) {
+    btn.classList.add('active');
+    lbl.textContent = 'Desativar KM';
+    appEl.classList.add('km-mode-active');
+    // Reconstruir cache de features visíveis
+    kmFeatures = [];
+    layerGroup.eachLayer(layer => {
+      if (layer._kmFeature) kmFeatures.push(layer._kmFeature);
+    });
+  } else {
+    btn.classList.remove('active');
+    lbl.textContent = 'KM em tempo real';
+    appEl.classList.remove('km-mode-active');
+    document.getElementById('km-tooltip').style.display = 'none';
+  }
+}
+
+// Handler de mousemove no mapa
+function onMapMouseMove(e) {
+  if (!kmModeActive) return;
+  const tooltip = document.getElementById('km-tooltip');
+  const latlng = e.latlng;
+
+  // Buscar a feature mais próxima do cursor
+  let bestDist = Infinity, bestFeature = null, bestAccum = 0;
+  for (const feat of kmFeatures) {
+    const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
+    const res = nearestPointOnPolyline(latlng, coords);
+    if (res.dist < bestDist) {
+      bestDist = res.dist;
+      bestFeature = feat;
+      bestAccum = res.accum;
+    }
+  }
+
+  // Só mostrar se o cursor estiver a menos de 50m da linha
+  if (!bestFeature || bestDist > 50) {
+    tooltip.style.display = 'none';
+    return;
+  }
+
+  const p = bestFeature.properties;
+  const kmIni = parseFloat(p.km_ini) || 0;
+  const kmAtual = kmIni + (bestAccum / 1000);
+
+  document.getElementById('kt-road').textContent = p.rodovia || '';
+  document.getElementById('kt-km').textContent = 'km ' + kmAtual.toFixed(3).replace('.', ',');
+  document.getElementById('kt-seg').textContent = p.name + '  ·  ' + (p.desc_ini||'') + ' → ' + (p.desc_fim||'');
+
+  // Posicionar tooltip próximo ao cursor
+  const margin = 16;
+  let x = e.originalEvent.clientX + margin;
+  let y = e.originalEvent.clientY - 20;
+  const tw = 220, th = 80;
+  if (x + tw > window.innerWidth) x = e.originalEvent.clientX - tw - margin;
+  if (y + th > window.innerHeight) y = e.originalEvent.clientY - th - margin;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+  tooltip.style.display = 'block';
+}
+
 // ── Aliases mantidos ─────────────────────────────────────────────────────────
 function initLvcFilters() { /* substituído por initMultiFilters */ }
 
@@ -1661,6 +1799,19 @@ function renderLVC() {
     </div>
     <div id="diag-content"></div>
   </div>
+  <!-- Tooltip KM Real-time -->
+  <div id="km-tooltip">
+    <div class="kt-road" id="kt-road"></div>
+    <div class="kt-km" id="kt-km"></div>
+    <div class="kt-seg" id="kt-seg"></div>
+  </div>
+
+  <!-- Botão ativar KM -->
+  <button id="km-btn" onclick="toggleKmMode()" title="Medir km em tempo real">
+    <span class="km-btn-icon">📍</span>
+    <span id="km-btn-label">KM em tempo real</span>
+  </button>
+
   <!-- Modal Em Desenvolvimento -->
   <div id="dev-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;">
     <div style="background:#fff;border-radius:20px;padding:44px 48px;text-align:center;max-width:400px;width:90%;box-shadow:0 16px 48px rgba(0,0,0,0.28);animation:fadeUp 0.3s ease;position:relative;">
