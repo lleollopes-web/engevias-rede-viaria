@@ -1204,6 +1204,7 @@ function showIriDiagram(name) {
   for(let i=0;i<=ticks;i++){const t=document.createElement('div');t.className='diag-xtick';t.textContent=(i*interval).toFixed(interval<1?1:0)+'km';xaxis.appendChild(t);}
   content.appendChild(xaxis);
   diagram.classList.add('active');
+  updateKmBtnPosition();
 }
 
 function closeInfo() {
@@ -1634,10 +1635,23 @@ function showDiagram(name) {
   content.appendChild(xaxis);
 
   diagram.classList.add('active');
+  updateKmBtnPosition();
 }
 
 function closeDiagram() {
   document.getElementById('lvc-diagram').classList.remove('active');
+  updateKmBtnPosition();
+}
+
+function updateKmBtnPosition() {
+  const btn = document.getElementById('km-btn');
+  if (!btn) return;
+  const diag = document.getElementById('lvc-diagram');
+  const iriDiag = document.getElementById('iri-diagram');
+  let diagH = 0;
+  if (diag && diag.classList.contains('active')) diagH = diag.offsetHeight;
+  if (iriDiag && iriDiag.classList.contains('active')) diagH = iriDiag.offsetHeight;
+  btn.style.bottom = (diagH + 12) + 'px';
 }
 
 // ===== LVC =====
