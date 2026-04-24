@@ -1496,7 +1496,7 @@ function onMapMouseMove(e) {
   }
 
   // Só mostrar se o cursor estiver a menos de 50m da linha
-  if (!bestFeature || bestDist > 50) {
+  if (!bestFeature || bestDist > 200) {
     tooltip.style.display = 'none';
     return;
   }
