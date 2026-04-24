@@ -1422,17 +1422,6 @@ function haversineM(lat1, lon1, lat2, lon2) {
 
 // Ponto mais próximo em uma polilinha e distância acumulada até ele
 function nearestPointOnPolyline(latlng, coords, kmIni, kmFim) {
-  // Calcular comprimento total
-  let totalLen = 0;
-  for (let i = 0; i < coords.length - 1; i++)
-    totalLen += haversineM(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
-
-  // Comprimento esperado do segmento em metros
-  const kmLen = Math.abs(kmFim - kmIni); // km_ini/km_fim já em km ou m?
-
-  // Determinar sentido real da geometria:
-  // Calcular acumulação bruta do ponto do mouse nos 2 sentidos
-  // e escolher o que produz km mais próximo do esperado linearmente
   function calcAccum(ordCoords) {
     let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
     for (let i = 0; i < ordCoords.length - 1; i++) {
@@ -1447,39 +1436,38 @@ function nearestPointOnPolyline(latlng, coords, kmIni, kmFim) {
       }
       const projLat = la1+t*dy, projLon = lo1+t*dx;
       const d = haversineM(latlng.lat, latlng.lng, projLat, projLon);
-      if (d < bestDist) {
-        bestDist = d;
-        bestAccum = accumTotal + haversineM(la1,lo1,projLat,projLon);
-      }
+      if (d < bestDist) { bestDist = d; bestAccum = accumTotal + haversineM(la1,lo1,projLat,projLon); }
       accumTotal += segLen;
     }
-    return { dist: bestDist, accum: bestAccum };
+    return { dist: bestDist, accum: bestAccum, total: accumTotal };
   }
 
   const fwd = calcAccum(coords);
   const rev = calcAccum([...coords].reverse());
 
-  // Escolher o sentido cujo km resultante fica dentro do intervalo [kmIni, kmFim]
-  // km_ini/km_fim em km, accum em metros → dividir por 1000
-  const kmFwd = kmIni + fwd.accum / 1000;
-  const kmRev = kmIni + rev.accum / 1000;
+  // Usar proporção accum/total para mapear linearmente ao km real
+  // Isso elimina o problema de sentido: propFwd = 0 no início, 1 no fim
+  const propFwd = fwd.total > 0 ? fwd.accum / fwd.total : 0;
+  const propRev = rev.total > 0 ? rev.accum / rev.total : 0;
+
+  // km resultante em cada sentido
+  const kmFwd = kmIni + propFwd * (kmFim - kmIni);
+  const kmRev = kmIni + propRev * (kmFim - kmIni);
+
+  // Ambos deveriam estar no intervalo [min,max] — escolher pelo menor erro de distância
+  // mas TAMBÉM verificar qual produz km crescente (dentro do range)
   const kmMin = Math.min(kmIni, kmFim);
   const kmMax = Math.max(kmIni, kmFim);
+  const fwdOk = kmFwd >= kmMin - 0.05 && kmFwd <= kmMax + 0.05;
+  const revOk = kmRev >= kmMin - 0.05 && kmRev <= kmMax + 0.05;
 
-  // Preferir o sentido que mantém o km dentro do intervalo do segmento
-  const fwdOk = kmFwd >= kmMin - 0.5 && kmFwd <= kmMax + 0.5;
-  const revOk = kmRev >= kmMin - 0.5 && kmRev <= kmMax + 0.5;
+  let kmFinal, dist;
+  if (fwdOk && !revOk)       { kmFinal = kmFwd; dist = fwd.dist; }
+  else if (revOk && !fwdOk)  { kmFinal = kmRev; dist = rev.dist; }
+  else if (fwd.dist <= rev.dist) { kmFinal = kmFwd; dist = fwd.dist; }
+  else                        { kmFinal = kmRev; dist = rev.dist; }
 
-  let accum, dist;
-  if (fwdOk && !revOk) { accum = fwd.accum; dist = fwd.dist; }
-  else if (revOk && !fwdOk) { accum = rev.accum; dist = rev.dist; }
-  else {
-    // Ambos ou nenhum ok: usar o que tem menor dist ao cursor
-    if (fwd.dist <= rev.dist) { accum = fwd.accum; dist = fwd.dist; }
-    else { accum = rev.accum; dist = rev.dist; }
-  }
-
-  return { dist, accum, total: totalLen };
+  return { dist, kmFinal, total: fwd.total };
 }
 
 function toggleKmMode() {
@@ -1511,7 +1499,7 @@ function onMapMouseMove(e) {
   const latlng = e.latlng;
 
   // Buscar a feature mais próxima do cursor
-  let bestDist = Infinity, bestFeature = null, bestAccum = 0;
+  let bestDist = Infinity, bestFeature = null, bestAccum = 0, bestResult = null;
   for (const feat of kmFeatures) {
     const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
     const _kmI = parseFloat(String(feat.properties.km_ini).replace(',','.')) || 0;
@@ -1520,7 +1508,8 @@ function onMapMouseMove(e) {
     if (res.dist < bestDist) {
       bestDist = res.dist;
       bestFeature = feat;
-      bestAccum = res.accum;
+      bestAccum = res.accum || 0;
+      bestResult = res;
     }
   }
 
@@ -1533,9 +1522,9 @@ function onMapMouseMove(e) {
   const p = bestFeature.properties;
   // km_ini/km_fim usam vírgula como decimal (ex: "1,538") → converter
   const kmIni = parseFloat(String(p.km_ini).replace(',','.')) || 0;
-  const kmFim = parseFloat(String(p.km_fim).replace(',','.')) || 0;
-  // bestAccum está em metros, km_ini/km_fim em km → dividir por 1000
-  const kmAtual = kmIni + (bestAccum / 1000);
+  const kmFim  = parseFloat(String(p.km_fim).replace(',','.'))  || 0;
+  const kmAtual = bestResult.kmFinal !== undefined ? bestResult.kmFinal
+                  : kmIni + (bestAccum / 1000);
 
   document.getElementById('kt-road').textContent = p.rodovia || '';
   document.getElementById('kt-km').textContent = 'km ' + kmAtual.toFixed(3).replace('.', ',');
