@@ -1421,13 +1421,23 @@ function haversineM(lat1, lon1, lat2, lon2) {
 }
 
 // Ponto mais próximo em uma polilinha e distância acumulada até ele
-function nearestPointOnPolyline(latlng, coords) {
-  let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
+function nearestPointOnPolyline(latlng, coords, kmIni, kmFim) {
+  // Calcular comprimento total da polilinha
+  let totalLen = 0;
   for (let i = 0; i < coords.length - 1; i++) {
-    const [la1,lo1] = coords[i];
-    const [la2,lo2] = coords[i+1];
+    totalLen += haversineM(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
+  }
+
+  // Determinar se coordenadas estão no sentido crescente ou decrescente de km
+  // Se kmFim < kmIni os coords estão invertidos → percorrer ao contrário
+  const invertido = (kmFim < kmIni);
+  const ordCoords = invertido ? [...coords].reverse() : coords;
+
+  let bestDist = Infinity, bestAccum = 0, accumTotal = 0;
+  for (let i = 0; i < ordCoords.length - 1; i++) {
+    const [la1,lo1] = ordCoords[i];
+    const [la2,lo2] = ordCoords[i+1];
     const segLen = haversineM(la1,lo1,la2,lo2);
-    // Projeção do ponto no segmento
     const dx = lo2-lo1, dy = la2-la1;
     let t = 0;
     if (segLen > 0) {
@@ -1442,7 +1452,7 @@ function nearestPointOnPolyline(latlng, coords) {
     }
     accumTotal += segLen;
   }
-  return { dist: bestDist, accum: bestAccum, total: accumTotal };
+  return { dist: bestDist, accum: bestAccum, total: totalLen };
 }
 
 function toggleKmMode() {
@@ -1477,7 +1487,7 @@ function onMapMouseMove(e) {
   let bestDist = Infinity, bestFeature = null, bestAccum = 0;
   for (const feat of kmFeatures) {
     const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const res = nearestPointOnPolyline(latlng, coords);
+    const res = nearestPointOnPolyline(latlng, coords, feat.properties.km_ini, feat.properties.km_fim);
     if (res.dist < bestDist) {
       bestDist = res.dist;
       bestFeature = feat;
