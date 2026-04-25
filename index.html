@@ -946,6 +946,8 @@ function renderMap(features) {
     const hit = L.polyline(coords,
       {color:'transparent', weight:hitWidth, opacity:0, smoothFactor:1});
     hit._kmFeature = f; // referência para o KM real-time
+    hit._origColor  = cfg.color;
+    hit._origWeight = cfg.width + 4;
     hit.on('click', ()=>showInfo(p));
     hit.on('mouseover', function(){
       line.setStyle({weight:cfg.width+2, opacity:1});
@@ -1503,6 +1505,13 @@ function locateKmOnMap(rodovia, kmBusca) {
 
   // Remover pin anterior e criar novo
   removeKmPin();
+  // Destacar a linha visual do segmento via layerMap
+  const lineLayer = layerMap[feat.properties.id];
+  if (lineLayer) {
+    lineLayer._origStyle = { color: lineLayer.options.color, weight: lineLayer.options.weight, opacity: lineLayer.options.opacity };
+    lineLayer.setStyle({ color: '#ef4444', weight: 7, opacity: 1 });
+    lineLayer._isKmHighlight = true;
+  }
   const kmLabel = '📍 km ' + kmBusca.toFixed(3).replace('.', ',');
   const icon = L.divIcon({
     className: 'km-pin-icon',
@@ -1516,6 +1525,14 @@ function locateKmOnMap(rodovia, kmBusca) {
 
 function removeKmPin() {
   if (kmPinMarker) { map.removeLayer(kmPinMarker); kmPinMarker = null; }
+  // Restaurar estilo original das linhas destacadas
+  Object.values(layerMap).forEach(layer => {
+    if (layer._isKmHighlight && layer._origStyle) {
+      layer.setStyle(layer._origStyle);
+      layer._isKmHighlight = false;
+      layer._origStyle = null;
+    }
+  });
 }
 
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
