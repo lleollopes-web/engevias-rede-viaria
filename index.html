@@ -1440,6 +1440,7 @@ function mfApply(modo) {
 
 // ── Busca por KM ─────────────────────────────────────────────────────────────
 let kmPinMarker = null;
+let kmHighlightLine = null;
 
 function handleSearch(val) {
   // Verificar padrão: "CE-040, km 40" ou "CE-040,km40" etc
@@ -1505,13 +1506,13 @@ function locateKmOnMap(rodovia, kmBusca) {
 
   // Remover pin anterior e criar novo
   removeKmPin();
-  // Destacar a linha visual do segmento via layerMap
-  const lineLayer = layerMap[feat.properties.id];
-  if (lineLayer) {
-    lineLayer._origStyle = { color: lineLayer.options.color, weight: lineLayer.options.weight, opacity: lineLayer.options.opacity };
-    lineLayer.setStyle({ color: '#ef4444', weight: 7, opacity: 1 });
-    lineLayer._isKmHighlight = true;
-  }
+
+  // Desenhar linha do segmento diretamente (independente do layerMap)
+  const segCoords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
+  const cfg = getLineStyle(feat.properties);
+  kmHighlightLine = L.polyline(segCoords, {
+    color: '#ef4444', weight: 7, opacity: 1, smoothFactor: 1, interactive: false
+  }).addTo(map);
   const kmLabel = '📍 km ' + kmBusca.toFixed(3).replace('.', ',');
   const icon = L.divIcon({
     className: 'km-pin-icon',
@@ -1525,14 +1526,7 @@ function locateKmOnMap(rodovia, kmBusca) {
 
 function removeKmPin() {
   if (kmPinMarker) { map.removeLayer(kmPinMarker); kmPinMarker = null; }
-  // Restaurar estilo original das linhas destacadas
-  Object.values(layerMap).forEach(layer => {
-    if (layer._isKmHighlight && layer._origStyle) {
-      layer.setStyle(layer._origStyle);
-      layer._isKmHighlight = false;
-      layer._origStyle = null;
-    }
-  });
+  if (kmHighlightLine) { map.removeLayer(kmHighlightLine); kmHighlightLine = null; }
 }
 
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
