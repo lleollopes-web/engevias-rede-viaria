@@ -343,6 +343,16 @@
   #lvc-filters { padding:12px 16px; border-bottom:1px solid var(--border); display:none; }
   #lvc-filters.active { display:block; }
 
+  /* ===== PIN KM ===== */
+  .km-pin-label {
+    background:#1a2940; color:#fff;
+    font-family:'Inter',sans-serif; font-size:12px; font-weight:700;
+    padding:4px 10px; border-radius:12px;
+    border:2px solid #2a8fa0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.35);
+    white-space:nowrap;
+  }
+
   /* ===== FILTRO MÚLTIPLO ===== */
   .mf-wrapper { position:relative; }
   .mf-trigger {
@@ -572,7 +582,7 @@
         <div class="sidebar-label">Buscar segmento</div>
         <div class="search-box">
           <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="Rodovia, ID ou descrição...">
+          <input type="text" id="search-input" placeholder='Rodovia, ID ou descrição... (ex: CE-040, km 40)' oninput="handleSearch(this.value)">
         </div>
       </div>
 
@@ -849,11 +859,16 @@ async function initApp() {
   layerGroup = L.layerGroup().addTo(map);
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
+  map.on('click', () => {
+    removeKmPin();
+    document.getElementById('search-input').value = '';
+    applyFilters();
+  });
 
   setTimeout(() => { map.invalidateSize(); }, 200);
 
   buildLegend();
-  document.getElementById('search-input').addEventListener('input', applyFilters);
+  // search-input gerenciado por handleSearch()
   document.getElementById('stat-total').textContent = allFeatures.length.toLocaleString('pt-BR');
   initMultiFilters();
   applyFilters();
@@ -1411,6 +1426,86 @@ function mfApply(modo) {
       closeDiagram();
     }
   }
+}
+
+// ── Busca por KM ─────────────────────────────────────────────────────────────
+let kmPinMarker = null;
+
+function handleSearch(val) {
+  // Verificar padrão: "CE-040, km 40" ou "CE-040,km40" etc
+  const match = val.trim().match(/^([A-Z]{2}-\d+)\s*,\s*km\s*([\d]+(?:[.,]\d+)?)\s*$/i);
+  if (match) {
+    const rodovia = match[1].toUpperCase();
+    const kmBusca = parseFloat(match[2].replace(',', '.'));
+    locateKmOnMap(rodovia, kmBusca);
+  } else {
+    removeKmPin();
+    applyFilters();
+  }
+}
+
+function locateKmOnMap(rodovia, kmBusca) {
+  // Encontrar features da rodovia que contêm o km buscado
+  const candidates = allFeatures.filter(f => {
+    const p = f.properties;
+    if (p.rodovia !== rodovia) return false;
+    const ini = parseFloat(String(p.km_ini).replace(',', '.'));
+    const fim = parseFloat(String(p.km_fim).replace(',', '.'));
+    return kmBusca >= Math.min(ini, fim) - 0.01 && kmBusca <= Math.max(ini, fim) + 0.01;
+  });
+
+  if (candidates.length === 0) return;
+
+  // Usar o primeiro candidato (D0 ou S0 preferido)
+  const feat = candidates.find(f => f.properties.name.endsWith('D0') || f.properties.name.endsWith('S0'))
+               || candidates[0];
+  const p = feat.properties;
+  const kmIni = parseFloat(String(p.km_ini).replace(',', '.'));
+  const kmFim = parseFloat(String(p.km_fim).replace(',', '.'));
+
+  // Calcular proporção do km buscado no segmento
+  const prop = (kmBusca - kmIni) / (kmFim - kmIni);
+  const clampedProp = Math.max(0, Math.min(1, prop));
+
+  // Coordenadas invertidas (geometria gravada ao contrário)
+  const coords = [...feat.geometry.coordinates].reverse();
+
+  // Calcular comprimento total
+  let totalLen = 0;
+  const segs = [];
+  for (let i = 0; i < coords.length - 1; i++) {
+    const d = haversineM(coords[i][1], coords[i][0], coords[i+1][1], coords[i+1][0]);
+    segs.push(d);
+    totalLen += d;
+  }
+
+  // Encontrar ponto na proporção alvo
+  const targetDist = clampedProp * totalLen;
+  let accum = 0;
+  let lat = coords[0][1], lng = coords[0][0];
+  for (let i = 0; i < segs.length; i++) {
+    if (accum + segs[i] >= targetDist) {
+      const t = (targetDist - accum) / segs[i];
+      lat = coords[i][1] + t * (coords[i+1][1] - coords[i][1]);
+      lng = coords[i][0] + t * (coords[i+1][0] - coords[i][0]);
+      break;
+    }
+    accum += segs[i];
+  }
+
+  // Remover pin anterior e criar novo
+  removeKmPin();
+  const icon = L.divIcon({
+    className: '',
+    html: '<div class="km-pin-label">📍 km ' + kmBusca.toFixed(3).replace('.', ',') + '</div>',
+    iconAnchor: [0, 10]
+  });
+  kmPinMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+  map.setView([lat, lng], 14, { animate: true });
+}
+
+function removeKmPin() {
+  if (kmPinMarker) { map.removeLayer(kmPinMarker); kmPinMarker = null; }
 }
 
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
