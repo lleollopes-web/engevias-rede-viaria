@@ -1835,6 +1835,7 @@ function setModo(modo) {
   if (lvcLayerGroup) lvcLayerGroup.clearLayers();
   if (iriLayerGroup) iriLayerGroup.clearLayers();
   closeDiagram();
+  closeInfo();
 
   if (modo === 'iri') {
     document.getElementById('iri-panel').classList.add('active');
