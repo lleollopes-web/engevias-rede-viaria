@@ -316,6 +316,16 @@
   .diag-title { color:#7dd3f0; font-family:'Inter Tight',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.5px; }
   .diag-close { background:none; border:none; color:rgba(255,255,255,0.4); cursor:pointer; font-size:14px; line-height:1; padding:0; }
   .diag-close:hover { color:#fff; }
+  .diag-nav { display:flex; align-items:center; gap:8px; }
+  .diag-nav-btn {
+    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+    border-radius:6px; color:#fff; cursor:pointer;
+    font-size:14px; padding:2px 10px; line-height:1.4;
+    transition:all 0.15s;
+  }
+  .diag-nav-btn:hover { background:rgba(255,255,255,0.25); }
+  .diag-nav-btn:disabled { opacity:0.25; cursor:default; }
+  .diag-nav-counter { color:rgba(255,255,255,0.5); font-size:11px; min-width:40px; text-align:center; }
   .diag-row { display:flex; align-items:center; margin-bottom:3px; gap:5px; }
   .diag-label { color:rgba(255,255,255,0.5); font-size:9px; font-weight:700; width:18px; flex-shrink:0; text-align:right; }
   .diag-track { flex:1; display:flex; border-radius:2px; overflow:hidden; }
@@ -1418,10 +1428,12 @@ function mfApply(modo) {
   if (modo==='juris') applyFilters();
   else if (modo==='lvc') {
     if (currentAno) renderLVC();
-    // Mostrar diagrama se exatamente 1 segmento estiver ativo
+    // Mostrar diagrama para todos os segmentos ativos (múltiplos)
     const activeNames = mfGetActiveNames('lvc');
-    if (activeNames && activeNames.size === 1) {
-      showDiagram([...activeNames][0]);
+    const allRoadsNames = allFeatures.filter(f=>f.properties.name).map(f=>f.properties.name);
+    const namesForDiag = activeNames ? [...activeNames] : allRoadsNames;
+    if (namesForDiag.length > 0 && namesForDiag.length <= 50) {
+      showDiagramMulti(namesForDiag);
     } else {
       closeDiagram();
     }
@@ -1663,7 +1675,48 @@ function renderLVCFiltered() {
 }
 
 // ── Diagrama Linear ───────────────────────────────────────────────────────────
+// ── Diagrama — navegação múltipla ────────────────────────────────────────────
+let diagNames = [];   // lista de segmentos a exibir
+let diagIndex = 0;    // índice atual
+
+function diagNav(dir) {
+  diagIndex = Math.max(0, Math.min(diagNames.length - 1, diagIndex + dir));
+  renderDiagram(diagNames[diagIndex]);
+  updateDiagNav();
+}
+
+function updateDiagNav() {
+  const counter = document.getElementById('diag-counter');
+  const prev    = document.getElementById('diag-prev');
+  const next    = document.getElementById('diag-next');
+  if (!counter) return;
+  if (diagNames.length <= 1) {
+    counter.textContent = '';
+    if (prev) prev.style.display = 'none';
+    if (next) next.style.display = 'none';
+  } else {
+    counter.textContent = (diagIndex + 1) + '/' + diagNames.length;
+    if (prev) { prev.style.display = ''; prev.disabled = diagIndex === 0; }
+    if (next) { next.style.display = ''; next.disabled = diagIndex === diagNames.length - 1; }
+  }
+}
+
+// Abre o diagrama para uma lista de segmentos
+function showDiagramMulti(names) {
+  if (!names || names.length === 0) return;
+  diagNames = names;
+  diagIndex = 0;
+  renderDiagram(diagNames[0]);
+  updateDiagNav();
+  document.getElementById('lvc-diagram').classList.add('active');
+  updateKmBtnPosition();
+}
+
 function showDiagram(name) {
+  showDiagramMulti([name]);
+}
+
+function renderDiagram(name) {
   if (!lvcData) return;
   const base = name.slice(0,-2);
   const diagram = document.getElementById('lvc-diagram');
@@ -1749,9 +1802,7 @@ function showDiagram(name) {
     xaxis.appendChild(tick);
   }
   content.appendChild(xaxis);
-
-  diagram.classList.add('active');
-  updateKmBtnPosition();
+  // diagram.classList.add é feito pelo showDiagramMulti
 }
 
 function closeDiagram() {
@@ -1815,8 +1866,10 @@ function selectAno(ano) {
   });
   renderLVC();
   const activeNames = mfGetActiveNames('lvc');
-  if (activeNames && activeNames.size === 1) {
-    showDiagram([...activeNames][0]);
+  if (activeNames) {
+    const names = [...activeNames];
+    if (names.length > 0 && names.length <= 50) showDiagramMulti(names);
+    else closeDiagram();
   } else {
     closeDiagram();
   }
@@ -1939,7 +1992,12 @@ function renderLVC() {
   <div id="lvc-diagram">
     <div class="diag-header">
       <div class="diag-title" id="diag-title">LVC — Levantamento Visual Contínuo — Série Histórica</div>
-      <button class="diag-close" onclick="closeDiagram()">✕</button>
+      <div class="diag-nav">
+        <button class="diag-nav-btn" id="diag-prev" onclick="diagNav(-1)">◀</button>
+        <span class="diag-nav-counter" id="diag-counter"></span>
+        <button class="diag-nav-btn" id="diag-next" onclick="diagNav(1)">▶</button>
+        <button class="diag-close" onclick="closeDiagram()">✕</button>
+      </div>
     </div>
     <div id="diag-content"></div>
   </div>
