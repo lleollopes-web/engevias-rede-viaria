@@ -344,7 +344,12 @@
   #lvc-filters.active { display:block; }
 
   /* ===== PIN KM ===== */
-  .km-pin-icon { background:transparent !important; border:none !important; }
+  .km-pin-icon,
+  .km-pin-icon.leaflet-div-icon {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
   .km-pin-label {
     background:#1a2940; color:#fff;
     font-family:'Inter',sans-serif; font-size:15px; font-weight:700;
@@ -353,6 +358,7 @@
     box-shadow:0 4px 14px rgba(0,0,0,0.4);
     white-space:nowrap;
     letter-spacing:0.3px;
+    display:inline-block;
   }
 
   /* ===== FILTRO MÚLTIPLO ===== */
@@ -1497,10 +1503,12 @@ function locateKmOnMap(rodovia, kmBusca) {
 
   // Remover pin anterior e criar novo
   removeKmPin();
+  const kmLabel = '📍 km ' + kmBusca.toFixed(3).replace('.', ',');
   const icon = L.divIcon({
     className: 'km-pin-icon',
-    html: '<div class="km-pin-label">📍 km ' + kmBusca.toFixed(3).replace('.', ',') + '</div>',
-    iconAnchor: [0, 10]
+    html: '<div class="km-pin-label">' + kmLabel + '</div>',
+    iconSize: null,
+    iconAnchor: [0, 12]
   });
   kmPinMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
   map.setView([lat, lng], 14, { animate: true });
