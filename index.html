@@ -344,6 +344,7 @@
   #lvc-filters.active { display:block; }
 
   /* ===== PIN KM ===== */
+  .km-pin-icon { background:transparent !important; border:none !important; }
   .km-pin-label {
     background:#1a2940; color:#fff;
     font-family:'Inter',sans-serif; font-size:15px; font-weight:700;
@@ -1497,7 +1498,7 @@ function locateKmOnMap(rodovia, kmBusca) {
   // Remover pin anterior e criar novo
   removeKmPin();
   const icon = L.divIcon({
-    className: '',
+    className: 'km-pin-icon',
     html: '<div class="km-pin-label">📍 km ' + kmBusca.toFixed(3).replace('.', ',') + '</div>',
     iconAnchor: [0, 10]
   });
