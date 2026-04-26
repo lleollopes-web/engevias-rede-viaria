@@ -113,17 +113,18 @@
     font-family:'Inter Tight',sans-serif;
     font-size:17px; font-weight:700; letter-spacing:0.3px; color:#fff;
   }
-  .header-subtitle { font-size:12px; color:rgba(255,255,255,0.55); margin-top:2px; }
+  .header-subtitle { font-size:11px; color:rgba(255,255,255,0.85); margin-top:1px; }
   .header-stats { margin-left:auto; display:flex; gap:28px; align-items:center; }
-  .stat-chip { font-size:13px; color:rgba(255,255,255,0.6); display:flex; gap:6px; align-items:center; }
-  .stat-chip strong { color:#7dd3f0; font-family:'Inter Tight',sans-serif; font-size:17px; font-weight:700; }
+  .stat-chip { font-size:12px; color:rgba(255,255,255,0.9); display:flex; gap:5px; align-items:center; }
+  .stat-chip strong { color:#fff; font-family:'Inter Tight',sans-serif; font-size:16px; font-weight:700; }
   .header-user {
-    display:flex; align-items:center; gap:8px;
-    background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
-    padding:7px 14px; border-radius:20px; cursor:pointer;
-    font-size:13px; color:rgba(255,255,255,0.75); transition:all 0.2s;
+    display:flex; align-items:center; gap:5px;
+    background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
+    padding:4px 10px; border-radius:16px; cursor:pointer;
+    font-size:11px; color:rgba(255,255,255,0.9); transition:all 0.2s;
+    white-space:nowrap;
   }
-  .header-user:hover { background:rgba(255,255,255,0.18); color:#fff; }
+  .header-user:hover { background:rgba(255,255,255,0.22); color:#fff; }
 
   /* Layout */
   .main-layout { flex:1; display:flex; overflow:hidden; }
@@ -681,7 +682,7 @@
     </div>
     <a href="/admin" target="_blank" style="color:rgba(255,255,255,0.4);font-size:11px;text-decoration:none;margin-right:8px;" title="Administração">⚙️</a>
     <div class="header-user" onclick="logout()">
-      <span>👤</span> <span id="header-username"></span> &nbsp;·&nbsp; Sair
+      <span>👤</span><span id="header-username"></span><span>· Sair</span>
     </div>
   </div>
 
@@ -1245,7 +1246,7 @@ function iriSelectAno(ano) {
   });
   renderIRI();
   const activeNamesIri2 = mfGetActiveNames('iri');
-  if (activeNamesIri2 && activeNamesIri2.size > 0 && activeNamesIri2.size <= 50) {
+  if (activeNamesIri2 && activeNamesIri2.size > 0 && activeNamesIri2.size <= 100) {
     showIriDiagramMulti([...activeNamesIri2]);
   } else {
     closeDiagram();
@@ -1549,7 +1550,7 @@ function mfApply(modo) {
     if (currentAno) renderLVC();
     // Diagrama só aparece se houver filtro ativo (não null) com ≤50 segmentos
     const activeNames = mfGetActiveNames('lvc');
-    if (activeNames && activeNames.size > 0 && activeNames.size <= 50) {
+    if (activeNames && activeNames.size > 0 && activeNames.size <= 100) {
       showDiagramMulti([...activeNames]);
     } else {
       closeDiagram();
@@ -1558,7 +1559,7 @@ function mfApply(modo) {
   else if (modo==='iri') {
     if (iriCurrentAno) renderIRI();
     const activeNamesIri = mfGetActiveNames('iri');
-    if (activeNamesIri && activeNamesIri.size > 0 && activeNamesIri.size <= 50) {
+    if (activeNamesIri && activeNamesIri.size > 0 && activeNamesIri.size <= 100) {
       showIriDiagramMulti([...activeNamesIri]);
     } else {
       closeDiagram();
@@ -2071,7 +2072,7 @@ function selectAno(ano) {
   });
   renderLVC();
   const activeNames = mfGetActiveNames('lvc');
-  if (activeNames && activeNames.size > 0 && activeNames.size <= 50) {
+  if (activeNames && activeNames.size > 0 && activeNames.size <= 100) {
     showDiagramMulti([...activeNames]);
   } else {
     closeDiagram();
