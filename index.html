@@ -750,7 +750,7 @@
           <span class="collapsible-arrow" id="legend-arrow">▶</span>
         </div>
         <div class="collapsible-body" id="legend-body">
-          <div class="legend-items" id="legend-items"></div>
+          <div class="legend-items" id="legend-items" style="max-height:220px;overflow-y:auto;padding-right:4px;"></div>
         </div>
       </div>
       </div><!-- /juris-filters -->
@@ -911,6 +911,10 @@ const SITUACAO_CONFIG = {
   PAV:  { label:'Pavimentado',       color:'#16a34a', width:2.5 },
   DUPD: { label:'Duplicado (Dir.)',   color:'#2563eb', width:3.5 },
   DUPE: { label:'Duplicado (Esq.)',   color:'#7c3aed', width:3.5 },
+  LEN:  { label:'Leito Natural',      color:'#d97706', width:2.0 },
+  IMP:  { label:'Implantação',        color:'#dc2626', width:2.0 },
+  EOD:  { label:'Em Obra (Dir.)',     color:'#ea580c', width:3.0 },
+  EOP:  { label:'Em Obra (Esq.)',     color:'#f59e0b', width:3.0 },
   LEN:  { label:'Leito Natural',      color:'#d97706', width:2.0 },
   IMP:  { label:'Implantação',        color:'#dc2626', width:2.0 },
   EOD:  { label:'Em Obra (Dir.)',     color:'#ea580c', width:3.0 },
