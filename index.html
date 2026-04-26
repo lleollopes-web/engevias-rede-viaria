@@ -560,15 +560,14 @@
     }
     #modo-select { font-size: 12px; padding: 2px 2px; max-width: 130px; }
 
-    /* Layout vertical */
-    .main-layout { flex-direction: column; overflow: hidden; }
+    /* Layout horizontal — sidebar lateral no mobile */
+    .main-layout { flex-direction: row; overflow: hidden; height: calc(100vh - 48px); }
     .sidebar {
-      width: 100%; max-width: 100%; order: 2;
-      height: auto; max-height: 28vh;
-      border-right: none; border-top: 2px solid var(--border);
-      overflow-y: auto; flex-shrink: 0;
+      width: 200px; min-width: 200px; max-width: 200px;
+      height: 100%; border-right: 1px solid var(--border);
+      overflow-y: auto; flex-shrink: 0; order: 1;
     }
-    #map { min-height: 45vh; flex: 1; order: 1; }
+    #map { flex: 1; order: 2; height: 100%; }
 
     /* Diagrama linear — tela toda */
     #lvc-diagram {
@@ -589,8 +588,13 @@
     .lvc-ano-btn { justify-content: center; }
 
     /* Sidebar sections compactas */
-    .sidebar-section { padding: 8px 12px; }
-    .sidebar-label { font-size: 10px; margin-bottom: 4px; }
+    .sidebar-section { padding: 8px 10px; }
+    .sidebar-label { font-size: 9px; margin-bottom: 4px; letter-spacing: 0.8px; }
+    .sidebar-section .search-box input { font-size: 12px; padding: 7px 8px 7px 28px; }
+    .sidebar-section .search-icon { font-size: 12px; left: 8px; }
+    .filter-group select { font-size: 11px; padding: 6px 8px; }
+    .mob-filter-btn { font-size: 12px; padding: 7px 10px; }
+    .mf-clear-btn { font-size: 11px; padding: 5px 8px; }
 
     /* Ocultar filtro customizado, mostrar botão mobile */
     .mf-wrapper { display: none !important; }
@@ -1764,31 +1768,51 @@ function openMobModal(modo) {
   document.getElementById('mob-search-input').value = '';
   list.innerHTML = '';
   const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
+  // Fragment para evitar reflows múltiplos
+  const frag = document.createDocumentFragment();
   rods.forEach(rod => {
-    const checked = !mfState[modo][rod] || mfState[modo][rod] === undefined || mfState[modo][rod].size > 0 && mfState[modo][rod] === undefined;
+    // Ler estado atual sem chamar toggle
     const isOff = mfState[modo][rod] && mfState[modo][rod].size === 0;
     const row = document.createElement('div');
     row.className = 'mob-rod-row'; row.dataset.rod = rod;
-    row.innerHTML = `<input type="checkbox" ${isOff ? '' : 'checked'}><span>${rod}</span>`;
-    row.querySelector('input').addEventListener('change', function() {
-      mfRodToggle(modo, rod, this.checked);
-      updateMobLabel(modo);
-    });
-    row.addEventListener('click', function(e) {
-      if (e.target.tagName === 'INPUT') return;
-      const cb = this.querySelector('input');
-      cb.checked = !cb.checked;
-      mfRodToggle(modo, rod, cb.checked);
-      updateMobLabel(modo);
-    });
-    list.appendChild(row);
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = !isOff;
+    const lbl = document.createElement('span');
+    lbl.textContent = rod;
+    row.appendChild(cb); row.appendChild(lbl);
+    // Só aplicar ao fechar modal (closeMobModal) — não chamar mfRodToggle aqui
+    frag.appendChild(row);
   });
+  list.appendChild(frag);
   modal.classList.add('open');
 }
 
 function closeMobModal() {
+  // Ler estado de todos os checkboxes e aplicar ao mfState de uma vez
+  const modo = mobModalModo;
+  document.getElementById('mob-modal-list').querySelectorAll('.mob-rod-row').forEach(row => {
+    const rod = row.dataset.rod;
+    const checked = row.querySelector('input').checked;
+    if (checked) {
+      delete mfState[modo][rod];
+    } else {
+      mfState[modo][rod] = new Set();
+    }
+  });
+  // Sincronizar checkboxes do dropdown desktop
+  const list = document.getElementById(modo+'-mf-list');
+  if (list) {
+    list.querySelectorAll('.mf-rod-item').forEach(item => {
+      const rod = item.dataset.rod;
+      const isOff = mfState[modo][rod] && mfState[modo][rod].size === 0;
+      const rodCb = item.querySelector('.mf-rod-cb');
+      if (rodCb) rodCb.checked = !isOff;
+    });
+  }
+  updateMobLabel(modo);
+  mfUpdateBadges(modo);
   document.getElementById('mobile-rod-modal').classList.remove('open');
-  mfApply(mobModalModo);
+  mfApply(modo);
 }
 
 function mobSearchRods(q) {
@@ -1799,17 +1823,11 @@ function mobSearchRods(q) {
 }
 
 function mobSelectAll() {
-  document.getElementById('mob-modal-list').querySelectorAll('input[type=checkbox]').forEach(cb => {
-    if (!cb.checked) { cb.checked = true; mfRodToggle(mobModalModo, cb.closest('.mob-rod-row').dataset.rod, true); }
-  });
-  updateMobLabel(mobModalModo);
+  document.getElementById('mob-modal-list').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
 }
 
 function mobClearAll() {
-  document.getElementById('mob-modal-list').querySelectorAll('input[type=checkbox]').forEach(cb => {
-    if (cb.checked) { cb.checked = false; mfRodToggle(mobModalModo, cb.closest('.mob-rod-row').dataset.rod, false); }
-  });
-  updateMobLabel(mobModalModo);
+  document.getElementById('mob-modal-list').querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
 }
 
 function updateMobLabel(modo) {
