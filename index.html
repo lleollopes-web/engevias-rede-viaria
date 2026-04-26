@@ -484,10 +484,11 @@
 
   /* ===== MODAL MOBILE RODOVIAS ===== */
   #mobile-rod-modal {
-    display:none; position:fixed; inset:0; z-index:9998;
+    display:flex; position:fixed; inset:0; z-index:9998;
     background:rgba(0,0,0,0.5); align-items:flex-end;
+    opacity:0; pointer-events:none; transition:opacity 0.2s;
   }
-  #mobile-rod-modal.open { display:flex; }
+  #mobile-rod-modal.open { opacity:1; pointer-events:all; }
   .mob-modal-sheet {
     background:#fff; border-radius:20px 20px 0 0;
     width:100%; max-height:80vh; display:flex; flex-direction:column;
@@ -543,10 +544,10 @@
 
   /* Responsivo mobile */
   @media (max-width: 768px) {
-    /* Ocultar botão KM (não aplicável no mobile) */
+    /* Ocultar botão KM */
     #km-btn { display: none !important; }
 
-    /* Header compacto — 1 linha só */
+    /* Header compacto — 1 linha */
     .header {
       height: 48px; padding: 0 10px; gap: 8px;
       flex-wrap: nowrap; align-items: center; overflow: hidden;
@@ -560,14 +561,15 @@
     }
     #modo-select { font-size: 12px; padding: 2px 2px; max-width: 130px; }
 
-    /* Layout horizontal — sidebar lateral no mobile */
-    .main-layout { flex-direction: row; overflow: hidden; height: calc(100vh - 48px); }
+    /* Layout vertical — mapa cima, sidebar baixo */
+    .main-layout { flex-direction: column; overflow: hidden; }
     .sidebar {
-      width: 200px; min-width: 200px; max-width: 200px;
-      height: 100%; border-right: 1px solid var(--border);
-      overflow-y: auto; flex-shrink: 0; order: 1;
+      width: 100%; max-width: 100%; order: 2;
+      height: auto; max-height: 42vh;
+      border-right: none; border-top: 2px solid var(--border);
+      overflow-y: auto; flex-shrink: 0;
     }
-    #map { flex: 1; order: 2; height: 100%; }
+    #map { min-height: 40vh; flex: 1; order: 1; }
 
     /* Diagrama linear — tela toda */
     #lvc-diagram {
@@ -578,25 +580,28 @@
     .diag-nav-btn { font-size: 12px; padding: 2px 8px; }
 
     .info-panel { width: calc(100% - 24px); right: 12px; bottom: 60px; }
-    .segments-list { max-height: 50px; }
-    .filter-group select { font-size: 13px; padding: 8px 10px; }
+    .segments-list { max-height: 80px; }
 
-    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 8px; }
-    .lvc-ano-btn { flex: 1; min-width: 70px; padding: 6px 4px; font-size: 12px; }
-    .lvc-panel { max-height: 26vh; overflow-y: auto; }
-    .lvc-ano-btn .btn-label { display: none; }
-    .lvc-ano-btn { justify-content: center; }
-
-    /* Sidebar sections compactas */
-    .sidebar-section { padding: 8px 10px; }
-    .sidebar-label { font-size: 9px; margin-bottom: 4px; letter-spacing: 0.8px; }
-    .sidebar-section .search-box input { font-size: 12px; padding: 7px 8px 7px 28px; }
-    .sidebar-section .search-icon { font-size: 12px; left: 8px; }
-    .filter-group select { font-size: 11px; padding: 6px 8px; }
+    /* Sidebar — textos menores, espaçamentos reduzidos */
+    .sidebar-section { padding: 7px 12px; }
+    .sidebar-label { font-size: 10px; letter-spacing: 0.8px; margin-bottom: 4px; }
+    .search-box input { font-size: 13px; padding: 8px 10px 8px 32px; }
+    .filter-group { margin-bottom: 6px; }
+    .filter-group select { font-size: 12px; padding: 7px 10px; }
     .mob-filter-btn { font-size: 12px; padding: 7px 10px; }
-    .mf-clear-btn { font-size: 11px; padding: 5px 8px; }
+    .segment-card { padding: 8px 10px; }
+    .seg-road { font-size: 13px; }
+    .seg-desc { font-size: 11px; }
+    .seg-tags span { font-size: 10px; padding: 2px 6px; }
+    #list-header { padding: 6px 12px; font-size: 11px; }
 
-    /* Ocultar filtro customizado, mostrar botão mobile */
+    /* LVC compacto */
+    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 8px; }
+    .lvc-ano-btn { flex: 1; min-width: 70px; padding: 6px 4px; font-size: 12px; justify-content: center; }
+    .lvc-ano-btn .btn-label { display: none; }
+    .lvc-panel { max-height: 40vh; overflow-y: auto; }
+
+    /* Ocultar filtro customizado desktop, mostrar botão mobile */
     .mf-wrapper { display: none !important; }
     .mob-filter-btn-wrap { display: block !important; }
     .mf-clear-btn { display: none !important; }
