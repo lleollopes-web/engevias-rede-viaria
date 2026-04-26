@@ -1244,9 +1244,10 @@ function iriSelectAno(ano) {
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
   renderIRI();
-  const activeNamesIri = mfGetActiveNames('iri');
-  if (activeNamesIri && activeNamesIri.size === 1) {
-    showIriDiagram([...activeNamesIri][0]);
+  const activeNamesIri2 = mfGetActiveNames('iri');
+  const namesIri2 = activeNamesIri2 ? [...activeNamesIri2] : [];
+  if (namesIri2.length > 0 && namesIri2.length <= 50) {
+    showIriDiagramMulti(namesIri2);
   } else {
     closeDiagram();
   }
@@ -1306,6 +1307,14 @@ function renderIRIFiltered() {
   });
 }
 
+function showIriDiagramMulti(names) {
+  if (!names || names.length === 0) return;
+  diagNames = names;
+  diagIndex = 0;
+  showIriDiagram(diagNames[0]);
+  updateDiagNav();
+}
+
 function showIriDiagram(name) {
   if (!iriData) return;
   const diagram = document.getElementById('lvc-diagram');
@@ -1348,6 +1357,7 @@ function showIriDiagram(name) {
   const ticks=Math.floor(kmTotal/interval);
   for(let i=0;i<=ticks;i++){const t=document.createElement('div');t.className='diag-xtick';t.textContent=(i*interval).toFixed(interval<1?1:0)+'km';xaxis.appendChild(t);}
   content.appendChild(xaxis);
+  document.getElementById('diag-title').textContent = 'IRI — ' + name + ' — Série Histórica';
   diagram.classList.add('active');
   updateKmBtnPosition();
 }
@@ -1550,10 +1560,10 @@ function mfApply(modo) {
   }
   else if (modo==='iri') {
     if (iriCurrentAno) renderIRI();
-    // Mostrar diagrama se exatamente 1 segmento estiver ativo
     const activeNamesIri = mfGetActiveNames('iri');
-    if (activeNamesIri && activeNamesIri.size === 1) {
-      showIriDiagram([...activeNamesIri][0]);
+    const namesForIriDiag = activeNamesIri ? [...activeNamesIri] : [];
+    if (namesForIriDiag.length > 0 && namesForIriDiag.length <= 50) {
+      showIriDiagramMulti(namesForIriDiag);
     } else {
       closeDiagram();
     }
@@ -1876,7 +1886,11 @@ let diagIndex = 0;    // índice atual
 
 function diagNav(dir) {
   diagIndex = Math.max(0, Math.min(diagNames.length - 1, diagIndex + dir));
-  renderDiagram(diagNames[diagIndex]);
+  if (currentModo === 'iri') {
+    showIriDiagram(diagNames[diagIndex]);
+  } else {
+    renderDiagram(diagNames[diagIndex]);
+  }
   updateDiagNav();
 }
 
