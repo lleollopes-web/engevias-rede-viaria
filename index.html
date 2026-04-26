@@ -1245,9 +1245,8 @@ function iriSelectAno(ano) {
   });
   renderIRI();
   const activeNamesIri2 = mfGetActiveNames('iri');
-  const namesIri2 = activeNamesIri2 ? [...activeNamesIri2] : [];
-  if (namesIri2.length > 0 && namesIri2.length <= 50) {
-    showIriDiagramMulti(namesIri2);
+  if (activeNamesIri2 && activeNamesIri2.size > 0 && activeNamesIri2.size <= 50) {
+    showIriDiagramMulti([...activeNamesIri2]);
   } else {
     closeDiagram();
   }
@@ -1548,12 +1547,10 @@ function mfApply(modo) {
   if (modo==='juris') applyFilters();
   else if (modo==='lvc') {
     if (currentAno) renderLVC();
-    // Mostrar diagrama para todos os segmentos ativos (múltiplos)
+    // Diagrama só aparece se houver filtro ativo (não null) com ≤50 segmentos
     const activeNames = mfGetActiveNames('lvc');
-    const allRoadsNames = allFeatures.filter(f=>f.properties.name).map(f=>f.properties.name);
-    const namesForDiag = activeNames ? [...activeNames] : allRoadsNames;
-    if (namesForDiag.length > 0 && namesForDiag.length <= 50) {
-      showDiagramMulti(namesForDiag);
+    if (activeNames && activeNames.size > 0 && activeNames.size <= 50) {
+      showDiagramMulti([...activeNames]);
     } else {
       closeDiagram();
     }
@@ -1561,9 +1558,8 @@ function mfApply(modo) {
   else if (modo==='iri') {
     if (iriCurrentAno) renderIRI();
     const activeNamesIri = mfGetActiveNames('iri');
-    const namesForIriDiag = activeNamesIri ? [...activeNamesIri] : [];
-    if (namesForIriDiag.length > 0 && namesForIriDiag.length <= 50) {
-      showIriDiagramMulti(namesForIriDiag);
+    if (activeNamesIri && activeNamesIri.size > 0 && activeNamesIri.size <= 50) {
+      showIriDiagramMulti([...activeNamesIri]);
     } else {
       closeDiagram();
     }
@@ -2075,10 +2071,8 @@ function selectAno(ano) {
   });
   renderLVC();
   const activeNames = mfGetActiveNames('lvc');
-  if (activeNames) {
-    const names = [...activeNames];
-    if (names.length > 0 && names.length <= 50) showDiagramMulti(names);
-    else closeDiagram();
+  if (activeNames && activeNames.size > 0 && activeNames.size <= 50) {
+    showDiagramMulti([...activeNames]);
   } else {
     closeDiagram();
   }
