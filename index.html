@@ -484,49 +484,75 @@
 
   /* Responsivo mobile */
   @media (max-width: 768px) {
-    /* Header compacto */
+    /* Ocultar botão KM (não aplicável no mobile) */
+    #km-btn { display: none !important; }
+
+    /* Header compacto — 1 linha só */
     .header {
-      height: auto; min-height: 52px;
-      padding: 6px 10px; gap: 8px;
-      flex-wrap: wrap; align-items: center;
+      height: 48px; padding: 0 10px; gap: 8px;
+      flex-wrap: nowrap; align-items: center;
+      overflow: hidden;
     }
-    .header-logo { height: 30px; }
+    .header-logo { height: 32px; flex-shrink: 0; }
     .header-sep { display: none; }
     .header-subtitle { display: none; }
     .header-stats { display: none; }
-    .header-title { font-size: 13px; }
+    .header-title { display: none; }
 
-    /* Seletor MODO e botão usuário em linha separada */
-    .header > div:nth-child(3) { order: 3; width: 100%; }
+    /* MODO select compacto */
+    .header > div[style*="display:flex"] {
+      margin-left: auto !important;
+    }
     .header-user {
-      font-size: 12px; padding: 5px 10px;
+      font-size: 11px; padding: 4px 8px;
       background: rgba(255,255,255,0.2) !important;
       color: #fff !important; border-color: rgba(255,255,255,0.3) !important;
     }
+    #modo-select { font-size: 12px; padding: 2px 2px; max-width: 130px; }
 
     /* Layout vertical: mapa em cima, sidebar embaixo */
     .main-layout { flex-direction: column; overflow: hidden; }
     .sidebar {
       width: 100%; max-width: 100%; order: 2;
-      height: auto; max-height: 40vh;
+      height: auto; max-height: 38vh;
       border-right: none; border-top: 2px solid var(--border);
       overflow-y: auto; flex-shrink: 0;
     }
-    #map { min-height: 50vh; flex: 1; order: 1; }
+    #map { min-height: 45vh; flex: 1; order: 1; }
 
-    /* Botões do mapa — mover para baixo no mobile */
-    #map ~ div { top: auto !important; bottom: 10px !important; right: 8px !important; }
+    /* Botões Extents e Satélite — menores e sem sobreposição */
+    #map ~ div { top: auto !important; bottom: 8px !important; right: 8px !important; }
+    .leaflet-top.leaflet-right { top: 8px !important; }
+    .leaflet-control-zoom { margin-top: 8px !important; margin-left: 8px !important; }
+
+    /* Botões Extents/Satélite — compactos */
+    button[onclick*="fitExtents"],
+    button[onclick*="toggleSat"] {
+      font-size: 11px !important; padding: 5px 8px !important;
+    }
+
+    /* Diagrama linear — ocupar tela toda no mobile */
+    #lvc-diagram {
+      left: 0 !important; right: 0 !important;
+      padding: 6px 8px 4px;
+      position: fixed; bottom: 0; z-index: 900;
+    }
+    .diag-title { font-size: 10px; }
+    .diag-nav-btn { font-size: 12px; padding: 2px 8px; }
 
     .info-panel { width: calc(100% - 24px); right: 12px; bottom: 60px; }
-    .segments-list { max-height: 80px; }
-    .filter-group select { font-size: 14px; padding: 10px 12px; }
+    .segments-list { max-height: 60px; }
+    .filter-group select { font-size: 13px; padding: 8px 10px; }
 
-    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap: 6px; padding: 10px; }
-    .lvc-ano-btn { flex: 1; min-width: 80px; padding: 8px 6px; font-size: 13px; }
-    .lvc-panel { max-height: 38vh; overflow-y: auto; }
-    #lvc-diagram { left: 0; right: 0; }
+    .lvc-ano-btns { flex-direction: row; flex-wrap: wrap; gap: 4px; padding: 8px; }
+    .lvc-ano-btn { flex: 1; min-width: 70px; padding: 6px 4px; font-size: 12px; }
+    .lvc-panel { max-height: 36vh; overflow-y: auto; }
     .lvc-ano-btn .btn-label { display: none; }
-    .lvc-ano-btn { justify-content: center; padding: 10px 4px; }
+    .lvc-ano-btn { justify-content: center; }
+
+    /* Sidebar sections mais compactas */
+    .sidebar-section { padding: 10px 12px 10px; }
+    .sidebar-label { font-size: 10px; margin-bottom: 6px; }
   }
 
   /* Scrollbar */
