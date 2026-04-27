@@ -2308,12 +2308,14 @@ function setModo(modo) {
   // Reset todos os painéis
   document.getElementById('lvc-panel').classList.remove('active');
   document.getElementById('iri-panel').classList.remove('active');
+  document.getElementById('fwd-panel').classList.remove('active');
   document.getElementById('segments-list').style.display = 'none';
   document.getElementById('list-header').style.display = 'none';
   document.getElementById('juris-filters').style.display = 'none';
   layerGroup.clearLayers();
   if (lvcLayerGroup) lvcLayerGroup.clearLayers();
   if (iriLayerGroup) iriLayerGroup.clearLayers();
+  if (fwdLayerGroup) fwdLayerGroup.clearLayers();
   closeDiagram();
   closeInfo();
 
