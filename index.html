@@ -279,6 +279,8 @@
   #lvc-panel.active { display:flex; }
   #iri-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   #iri-panel.active { display:flex; }
+  #fwd-panel { display:none; flex-direction:column; }
+  #fwd-panel.active { display:flex; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
     padding:12px 16px; border-radius:10px; border:2px solid var(--border);
@@ -674,7 +676,7 @@
           <option value="jurisdicao">Situação Geral</option>
           <option value="lvc">Condição do LVC</option>
           <option value="iri">Condição do IRI</option>
-          <option value="fwd">Condição FWD</option>
+          <option value="fwd">Condição do FWD</option>
           <option value="recfuncional">Recuperação Funcional</option>
         </select>
       </div>
@@ -811,6 +813,59 @@
 
       <div class="list-header" id="list-header">— segmentos</div>
       <div class="segments-list" id="segments-list"></div>
+
+      <!-- Painel FWD -->
+      <div id="fwd-panel">
+        <div style="padding:6px 16px 4px;">
+          <div class="sidebar-label" style="margin-bottom:2px">Condição do FWD</div>
+          <div style="font-size:11px;color:var(--text3)">Falling Weight Deflectometer</div>
+        </div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:8px">Filtrar rodovia / segmento</div>
+          <div class="mob-filter-btn-wrap" id="fwd-mob-wrap">
+            <button class="mob-filter-btn" onclick="openMobModal('fwd')">
+              <span class="mob-filter-btn-label" id="fwd-mob-label">Todas as rodovias</span>
+              <span>▼</span>
+            </button>
+          </div>
+          <div class="filter-group mf-wrapper" id="fwd-mf-wrapper">
+            <button class="mf-trigger" id="fwd-mf-trigger" onclick="mfToggle('fwd')">
+              <span class="mf-trigger-label" id="fwd-mf-label">Todas as rodovias</span>
+              <span class="mf-trigger-arrow">▼</span>
+            </button>
+            <div class="mf-dropdown" id="fwd-mf-dropdown">
+              <div class="mf-search"><input type="text" placeholder="Buscar rodovia..." oninput="mfSearch(this,'fwd')"></div>
+              <div class="mf-actions">
+                <button class="mf-action-btn" onclick="mfSelectAll('fwd')">Marcar todas</button>
+                <button class="mf-action-btn" onclick="mfClearAll('fwd')">Limpar</button>
+              </div>
+              <div id="fwd-mf-list"></div>
+            </div>
+          </div>
+          <button class="mf-clear-btn" id="fwd-mf-clear" onclick="mfSelectAll('fwd')">✕ Limpar filtro de rodovias</button>
+        </div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:8px">Ano</div>
+          <div class="lvc-ano-btns" id="fwd-ano-btns"></div>
+        </div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+          <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:24px;height:5px;background:#16a34a;border-radius:3px;display:inline-block;flex-shrink:0;"></span> Bom (D0 ≤ 500 µm)</div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:24px;height:5px;background:#eab308;border-radius:3px;display:inline-block;flex-shrink:0;"></span> Regular (500 &lt; D0 ≤ 650 µm)</div>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12px;"><span style="width:24px;height:5px;background:#ef4444;border-radius:3px;display:inline-block;flex-shrink:0;"></span> Ruim (D0 &gt; 650 µm)</div>
+          </div>
+        </div>
+        <div style="padding:6px 16px 10px;">
+          <div class="sidebar-label" style="margin-bottom:4px">Estatísticas</div>
+          <div style="font-size:12px;display:flex;flex-direction:column;gap:2px;">
+            <div style="display:flex;justify-content:space-between;"><span>Segmentos</span><span id="fwd-stat-total">—</span></div>
+            <div style="display:flex;justify-content:space-between;color:#16a34a;font-weight:600;"><span>Bom</span><span id="fwd-stat-bom">—</span></div>
+            <div style="display:flex;justify-content:space-between;color:#eab308;font-weight:600;"><span>Regular</span><span id="fwd-stat-reg">—</span></div>
+            <div style="display:flex;justify-content:space-between;color:#ef4444;font-weight:600;"><span>Ruim</span><span id="fwd-stat-ruim">—</span></div>
+          </div>
+        </div>
+      </div>
 
       <!-- Painel LVC (com scroll) -->
       <div id="lvc-panel">
@@ -1386,11 +1441,11 @@ function closeInfo() {
 }
 
 // ── SISTEMA DE FILTRO MÚLTIPLO ─────────────────────────────────────────────────
-const mfState = { juris: {}, lvc: {}, iri: {} };
+const mfState = { juris: {}, lvc: {}, iri: {}, fwd: {} };
 
 function initMultiFilters() {
   const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
-  ['juris','lvc','iri'].forEach(modo => mfBuildList(modo, rods));
+  ['juris','lvc','iri','fwd'].forEach(modo => mfBuildList(modo, rods));
 }
 
 function mfBuildList(modo, rods) {
@@ -1674,6 +1729,159 @@ function locateKmOnMap(rodovia, kmBusca) {
 function removeKmPin() {
   if (kmPinMarker) { map.removeLayer(kmPinMarker); kmPinMarker = null; }
   if (kmHighlightLine) { map.removeLayer(kmHighlightLine); kmHighlightLine = null; }
+}
+
+// ── Modo FWD ─────────────────────────────────────────────────────────────────
+let fwdData = null;
+let fwdCurrentAno = null;
+let fwdLayerGroup = null;
+
+const FWD_COLORS = { 'BOM':'#16a34a', 'REGULAR':'#eab308', 'RUIM':'#ef4444' };
+
+function fwdColor(condicao) {
+  return FWD_COLORS[condicao] || '#94a3b8';
+}
+
+async function loadFWD() {
+  if (fwdData) { buildFwdAnoBtns(); return; }
+  const res = await fetch('/fwd');
+  fwdData = await res.json();
+  buildFwdAnoBtns();
+  ['juris','lvc','iri','fwd'].forEach(m => {
+    const rods = [...new Set(allFeatures.map(f=>f.properties.rodovia).filter(Boolean))].sort();
+    mfBuildList(m, rods);
+  });
+}
+
+function buildFwdAnoBtns() {
+  const c = document.getElementById('fwd-ano-btns');
+  c.innerHTML = '';
+  fwdData.anos.forEach(ano => {
+    const btn = document.createElement('button');
+    btn.className = 'lvc-ano-btn'; btn.dataset.ano = ano;
+    btn.innerHTML = `<span style="font-size:16px">${ano}</span><span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>`;
+    btn.onclick = () => fwdSelectAno(ano);
+    c.appendChild(btn);
+  });
+}
+
+function fwdSelectAno(ano) {
+  fwdCurrentAno = ano;
+  document.querySelectorAll('#fwd-ano-btns .lvc-ano-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ano===ano);
+    b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
+  });
+  renderFWD();
+}
+
+function renderFWD() {
+  if (!fwdData || !fwdCurrentAno) return;
+  if (!fwdLayerGroup) fwdLayerGroup = L.layerGroup().addTo(map);
+  fwdLayerGroup.clearLayers();
+
+  let features = fwdData.data[fwdCurrentAno] || [];
+  const activeNames = mfGetActiveNames('fwd');
+  if (activeNames) {
+    const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
+    features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
+  }
+
+  // Agrupar por trecho para desenhar linhas contínuas
+  // Usar roads_data para pegar as geometrias
+  const trechoMap = {};
+  features.forEach(f => {
+    const t = f.properties.trecho;
+    if (!trechoMap[t]) trechoMap[t] = [];
+    trechoMap[t].push(f);
+  });
+
+  let bom=0, reg=0, ruim=0;
+  features.forEach(f => {
+    const c = f.properties.condicao;
+    if (c==='BOM') bom++; else if (c==='RUIM') ruim++; else reg++;
+  });
+
+  // Renderizar usando geometria do roads_data
+  const roadsByName = {};
+  allFeatures.forEach(feat => {
+    roadsByName[feat.properties.name] = feat;
+  });
+
+  Object.entries(trechoMap).forEach(([trecho, segs]) => {
+    const roadFeat = roadsByName[trecho];
+    if (!roadFeat) return;
+    const coords = [...roadFeat.geometry.coordinates].reverse().map(c=>[c[1],c[0]]);
+    const totalLen = coords.reduce((acc,_,i)=>i?acc+haversineM(coords[i-1][0],coords[i-1][1],coords[i][0],coords[i][1]):0, 0);
+    const kmIni = parseFloat(String(roadFeat.properties.km_ini).replace(',','.')) || 0;
+    const kmFim = parseFloat(String(roadFeat.properties.km_fim).replace(',','.')) || 0;
+
+    segs.forEach(seg => {
+      const p = seg.properties;
+      // Proporção do segmento na polilinha
+      const segIniKm = p.km_ini / 1000; // metros → km
+      const segFimKm = p.km_fim / 1000;
+      const propIni = (segIniKm - kmIni) / (kmFim - kmIni);
+      const propFim = (segFimKm - kmIni) / (kmFim - kmIni);
+
+      // Extrair sub-polilinha
+      const subCoords = extractSubPolyline(coords, totalLen, propIni, propFim);
+      if (subCoords.length < 2) return;
+
+      const color = fwdColor(p.condicao);
+      const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
+      line.bindTooltip(
+        `<b>${p.trecho}</b><br>km ${(segIniKm).toFixed(3)} – ${(segFimKm).toFixed(3)}<br>` +
+        `D0: ${p.d0} µm<br><span style="color:${color};font-weight:700">${p.condicao}</span>`,
+        {sticky:true}
+      );
+      line.addTo(fwdLayerGroup);
+    });
+  });
+
+  // Estatísticas
+  document.getElementById('fwd-stat-total').textContent = features.length.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-bom').textContent = bom.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-reg').textContent = reg.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-ruim').textContent = ruim.toLocaleString('pt-BR');
+}
+
+// Extrair sub-polilinha entre proporções 0-1
+function extractSubPolyline(coords, totalLen, propIni, propFim) {
+  if (propIni < 0) propIni = 0;
+  if (propFim > 1) propFim = 1;
+  const distIni = propIni * totalLen;
+  const distFim = propFim * totalLen;
+  const sub = [];
+  let accum = 0;
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const segLen = haversineM(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
+    const segEnd = accum + segLen;
+
+    if (segEnd < distIni) { accum = segEnd; continue; }
+    if (accum > distFim) break;
+
+    // Ponto de início
+    if (accum <= distIni && distIni <= segEnd && segLen > 0) {
+      const t = (distIni - accum) / segLen;
+      sub.push([coords[i][0]+t*(coords[i+1][0]-coords[i][0]), coords[i][1]+t*(coords[i+1][1]-coords[i][1])]);
+    } else if (sub.length === 0) {
+      sub.push(coords[i]);
+    }
+
+    // Ponto do meio
+    if (accum > distIni && accum < distFim) sub.push(coords[i]);
+
+    // Ponto de fim
+    if (accum <= distFim && distFim <= segEnd && segLen > 0) {
+      const t = (distFim - accum) / segLen;
+      sub.push([coords[i][0]+t*(coords[i+1][0]-coords[i][0]), coords[i][1]+t*(coords[i+1][1]-coords[i][1])]);
+      break;
+    }
+    accum = segEnd;
+  }
+  if (sub.length === 0 && coords.length > 0) sub.push(coords[coords.length-1]);
+  return sub;
 }
 
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
@@ -2118,7 +2326,13 @@ function setModo(modo) {
     return;
   }
   if (modo === 'fwd') {
-    openDevModal('Condição FWD');
+    document.getElementById('fwd-panel').classList.add('active');
+    document.getElementById('segments-list').style.display   = 'none';
+    document.getElementById('list-header').style.display     = 'none';
+    document.getElementById('juris-filters').style.display   = 'none';
+    layerGroup.clearLayers();
+    closeDiagram();
+    loadFWD();
     return;
   }
   if (modo === 'recfuncional') {
@@ -2136,6 +2350,7 @@ function setModo(modo) {
   } else {
     document.getElementById('lvc-panel').classList.remove('active');
     document.getElementById('iri-panel').classList.remove('active');
+    document.getElementById('fwd-panel').classList.remove('active');
     document.getElementById('segments-list').style.display   = '';
     document.getElementById('list-header').style.display     = '';
     document.getElementById('juris-filters').style.display   = '';

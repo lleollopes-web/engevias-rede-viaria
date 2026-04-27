@@ -16,6 +16,7 @@ console.log('Carregando dados...');
 const roads = loadFile(path.join(__dirname, 'roads_data.json'));
 const lvc   = loadFile(path.join(__dirname, 'lvc_data.json'));
 const iri   = loadFile(path.join(__dirname, 'iri_data.json'));
+const fwd   = loadFile(path.join(__dirname, 'fwd_data.json'));
 console.log('Pronto. Servidor iniciando...');
 
 // Comprimir em background após subir
@@ -24,6 +25,7 @@ setTimeout(() => {
   roads.gz = zlib.gzipSync(roads.raw);
   lvc.gz   = zlib.gzipSync(lvc.raw);
   iri.gz   = zlib.gzipSync(iri.raw);
+  fwd.gz   = zlib.gzipSync(fwd.raw);
   console.log('Compressão concluída.');
 }, 100);
 
@@ -31,7 +33,7 @@ const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
   const gz = (req.headers['accept-encoding'] || '').includes('gzip');
 
-  const routes = { '/data': roads, '/lvc': lvc, '/iri': iri };
+  const routes = { '/data': roads, '/lvc': lvc, '/iri': iri, '/fwd': fwd };
   if (req.method === 'GET' && routes[url]) {
     const d = routes[url];
     if (gz && d.gz) {
@@ -41,20 +43,6 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' });
       res.end(d.raw);
     }
-    return;
-  }
-
-  // Servir arquivos estáticos da pasta /imagem
-  if (url.startsWith('/imagem/')) {
-    const ext = path.extname(url).toLowerCase();
-    const mimeTypes = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml' };
-    const mime = mimeTypes[ext] || 'application/octet-stream';
-    const filePath = path.join(__dirname, url);
-    fs.readFile(filePath, (err, data) => {
-      if (err) { res.writeHead(404); res.end('Não encontrado'); return; }
-      res.writeHead(200, { 'Content-Type': mime, 'Cache-Control': 'public, max-age=86400' });
-      res.end(data);
-    });
     return;
   }
 
