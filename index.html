@@ -1828,8 +1828,7 @@ function renderFWD() {
       const color = fwdColor(p.condicao);
       const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
       line.bindTooltip(
-        `<b>${p.trecho}</b><br>km ${(segIniKm).toFixed(3)} – ${(segFimKm).toFixed(3)}<br>` +
-        `km ${(p.km_ini/1000).toFixed(3)} – ${(p.km_fim/1000).toFixed(3)}<br>D0: ${p.d0} µm<br><span style="color:${color};font-weight:700">${p.condicao}</span>`,
+        `<b>${p.trecho}</b><br>km ${(p.km_ini/1000).toFixed(3)} – ${(p.km_fim/1000).toFixed(3)}<br>D0: ${p.d0} µm<br><span style="color:${color};font-weight:700">${p.condicao}</span>`,
         {sticky:true}
       );
       line.addTo(fwdLayerGroup);
