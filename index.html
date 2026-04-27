@@ -1817,11 +1817,9 @@ function renderFWD() {
 
     segs.forEach(seg => {
       const p = seg.properties;
-      // Proporção do segmento na polilinha
-      const segIniKm = p.km_ini / 1000; // metros → km
-      const segFimKm = p.km_fim / 1000;
-      const propIni = (segIniKm - kmIni) / (kmFim - kmIni);
-      const propFim = (segFimKm - kmIni) / (kmFim - kmIni);
+      // FWD usa metros relativos ao trecho (0 → extensão total)
+      const propIni = totalLen > 0 ? p.km_ini / totalLen : 0;
+      const propFim = totalLen > 0 ? p.km_fim / totalLen : 1;
 
       // Extrair sub-polilinha
       const subCoords = extractSubPolyline(coords, totalLen, propIni, propFim);
@@ -1831,7 +1829,7 @@ function renderFWD() {
       const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
       line.bindTooltip(
         `<b>${p.trecho}</b><br>km ${(segIniKm).toFixed(3)} – ${(segFimKm).toFixed(3)}<br>` +
-        `D0: ${p.d0} µm<br><span style="color:${color};font-weight:700">${p.condicao}</span>`,
+        `km ${(p.km_ini/1000).toFixed(3)} – ${(p.km_fim/1000).toFixed(3)}<br>D0: ${p.d0} µm<br><span style="color:${color};font-weight:700">${p.condicao}</span>`,
         {sticky:true}
       );
       line.addTo(fwdLayerGroup);
