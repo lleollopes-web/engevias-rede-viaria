@@ -2385,41 +2385,22 @@ async function loadRecuperacao() {
   if (!iriData) promises.push(fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}));
   if (!fwdData) promises.push(fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=d;}));
   await Promise.all(promises);
-
-  // Usar ano mais recente disponível em comum
-  const anosLvc = lvcData ? lvcData.anos : [];
-  const anosIri = iriData ? iriData.anos : [];
-  const anosFwd = fwdData ? fwdData.anos : [];
-  const anosComuns = ['2025','2024','2023'].filter(a =>
-    anosLvc.includes(a) && anosIri.includes(a) && anosFwd.includes(a)
-  );
-
-  // Habilitar/desabilitar botões de ano
-  document.querySelectorAll('#rec-ano-wrap .lvc-ano-btn').forEach(btn => {
-    const ano = btn.dataset.ano;
-    const disponivel = anosLvc.includes(ano) || anosIri.includes(ano) || anosFwd.includes(ano);
-    btn.disabled = !disponivel;
-    btn.style.opacity = disponivel ? '1' : '0.4';
-  });
-
-  const anoInicial = anosComuns[0] || '2025';
-  recSelectAno(anoInicial);
-}
-
-function recSelectAno(ano) {
-  recCurrentAno = ano;
-  document.querySelectorAll('#rec-ano-wrap .lvc-ano-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.ano === ano);
-  });
   renderRecuperacao();
 }
 
+// Buscar conceito com fallback de ano: 2025 → 2024 → 2023
+function getTrechoConceitoFallback(data, trecho, anos) {
+  for (const ano of anos) {
+    const c = getTrechoConceito(data.data, ano, trecho);
+    if (c) return { conceito: c, ano };
+  }
+  return null;
+}
+
 function renderRecuperacao() {
-  if (!recCurrentAno) return;
   if (!recLayerGroup) recLayerGroup = L.layerGroup().addTo(map);
   recLayerGroup.clearLayers();
 
-  const ano = recCurrentAno;
   const stats = {};
   Object.keys(REC_COLORS).forEach(k => stats[k] = 0);
 
@@ -2428,10 +2409,17 @@ function renderRecuperacao() {
     const name = feat.properties.name;
     if (!name) return;
 
-    // Buscar conceitos nos 3 módulos
-    const lvcC = lvcData ? getTrechoConceito(lvcData.data, ano, name) : null;
-    const iriC = iriData ? getTrechoConceito(iriData.data, ano, name) : null;
-    const fwdC = fwdData ? getTrechoConceito(fwdData.data, ano, name) : null;
+    // LVC: fixo 2025; IRI e FWD: fallback 2025 → 2024 → 2023
+    const lvcRes = lvcData ? getTrechoConceitoFallback(lvcData, name, ['2025']) : null;
+    const iriRes = iriData ? getTrechoConceitoFallback(iriData, name, ['2025','2024','2023']) : null;
+    const fwdRes = fwdData ? getTrechoConceitoFallback(fwdData, name, ['2025','2024','2023']) : null;
+
+    const lvcC = lvcRes?.conceito || null;
+    const iriC = iriRes?.conceito || null;
+    const fwdC = fwdRes?.conceito || null;
+    const lvcAno = lvcRes?.ano || null;
+    const iriAno = iriRes?.ano || null;
+    const fwdAno = fwdRes?.ano || null;
 
     let intervencao, faltam = [];
     if (!lvcC) faltam.push('LVC');
@@ -2461,7 +2449,7 @@ function renderRecuperacao() {
       tooltipHtml += `<span style="color:#f87171">⚠ Faltam dados: ${faltam.join(', ')}</span><br>`;
       tooltipHtml += `<span style="color:#94a3b8;font-size:11px">Dados insuficientes para tomada de decisão</span>`;
     } else {
-      tooltipHtml += `LVC: <b>${lvcC}</b> | IRI: <b>${iriC}</b> | FWD: <b>${fwdC}</b><br>`;
+      tooltipHtml += `LVC ${lvcAno}: <b>${lvcC}</b> | IRI ${iriAno}: <b>${iriC}</b> | FWD ${fwdAno}: <b>${fwdC}</b><br>`;
       tooltipHtml += `<span style="color:${color};font-weight:700">➜ ${REC_LABELS[intervencao]}</span>`;
     }
     line.bindTooltip(tooltipHtml, {sticky: true});
@@ -2488,15 +2476,15 @@ function renderRecuperacao() {
       }
       html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">
         <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">LVC</td>
+          <td style="padding:6px 4px;color:var(--text3);">LVC ${lvcAno||''}</td>
           <td style="padding:6px 4px;font-weight:600;text-align:right;">${lvcC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
         </tr>
         <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">IRI</td>
+          <td style="padding:6px 4px;color:var(--text3);">IRI ${iriAno||''}</td>
           <td style="padding:6px 4px;font-weight:600;text-align:right;">${iriC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
         </tr>
         <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">FWD</td>
+          <td style="padding:6px 4px;color:var(--text3);">FWD ${fwdAno||''}</td>
           <td style="padding:6px 4px;font-weight:600;text-align:right;">${fwdC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
         </tr>
         <tr>
@@ -2936,11 +2924,10 @@ function renderLVC() {
       <div style="font-size:11px;color:var(--text3)">Matriz de Intervenção LVC + IRI + FWD</div>
     </div>
     <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
-      <div class="sidebar-label" style="margin-bottom:6px">Selecionar Ano</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="rec-ano-wrap">
-        <button class="lvc-ano-btn" data-ano="2023" onclick="recSelectAno('2023')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2023</button>
-        <button class="lvc-ano-btn" data-ano="2024" onclick="recSelectAno('2024')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2024</button>
-        <button class="lvc-ano-btn" data-ano="2025" onclick="recSelectAno('2025')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2025</button>
+      <div style="font-size:11px;color:var(--text3);line-height:1.7;">
+        <div>📋 <b>LVC:</b> 2025</div>
+        <div>📋 <b>IRI:</b> 2025 → 2024 → 2023</div>
+        <div>📋 <b>FWD:</b> 2025 → 2024 → 2023</div>
       </div>
     </div>
     <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
