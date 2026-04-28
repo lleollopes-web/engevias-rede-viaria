@@ -2409,12 +2409,33 @@ function getTrechoConceito(data, ano, trecho) {
 }
 
 async function loadRecuperacao() {
+  // Mostrar loading
+  const statsEl = document.getElementById('rec-stats');
+  if (statsEl) statsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">⏳ Carregando dados...</div>';
+
   // Garantir que LVC, IRI e FWD estão carregados
   const promises = [];
-  if (!lvcData) promises.push(fetch('/lvc').then(r=>r.json()).then(d=>{lvcData=d;}));
-  if (!iriData) promises.push(fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}));
-  if (!fwdData) promises.push(fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=d;}));
+  if (!lvcData) promises.push(
+    fetch('/lvc').then(r=>r.json()).then(d=>{lvcData=d;}).catch(e=>console.error('LVC erro:',e))
+  );
+  if (!iriData) promises.push(
+    fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}).catch(e=>console.error('IRI erro:',e))
+  );
+  if (!fwdData) promises.push(
+    fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=d;}).catch(e=>console.error('FWD erro:',e))
+  );
+
   await Promise.all(promises);
+
+  // Verificar se carregou
+  console.log('Dados carregados — LVC:', !!lvcData, '| IRI:', !!iriData, '| FWD:', !!fwdData);
+  if (lvcData) {
+    const anos = Object.keys(lvcData.data || lvcData);
+    console.log('LVC anos:', anos);
+    const primeiro = (lvcData.data || lvcData)[anos[0]];
+    if (primeiro && primeiro[0]) console.log('LVC props ex:', JSON.stringify(primeiro[0].properties));
+  }
+
   renderRecuperacao();
 }
 
@@ -2442,18 +2463,7 @@ function renderRecuperacao() {
     if (!name) return;
 
     // LVC: usar 2025 (fixo)
-    // IRI/FWD: acumulativo — usa o mais recente disponível
-    const lvcDataObj = lvcData ? (lvcData.data || lvcData) : null;
-    const lvcRaw = lvcDataObj && lvcDataObj['2025'] ? lvcDataObj['2025'].filter(f => {
-      const ft = f.properties.trecho || f.properties.name || '';
-      return getTrechoBase(ft) === getTrechoBase(name);
-    }) : [];
-    // Log debug para verificar — remover depois
-    if (lvcRaw.length > 0 && !window._lvcLogged) {
-      console.log('LVC 2025 exemplo props:', JSON.stringify(lvcRaw[0].properties));
-      window._lvcLogged = true;
-    }
-    const lvcC = lvcData ? getTrechoConceito(lvcDataObj, '2025', name) : null;
+    const lvcC = lvcData ? getTrechoConceito(lvcData.data || lvcData, '2025', name) : null;
     const lvcAno = lvcC ? '2025' : null;
 
     // IRI: pega o ano mais recente com dados
