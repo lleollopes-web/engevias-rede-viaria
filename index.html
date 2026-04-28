@@ -1115,8 +1115,11 @@ async function initApp() {
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
   map.on('click', () => {
     removeKmPin();
-    document.getElementById('search-input').value = '';
-    applyFilters();
+    // Só limpar busca e refiltrar se estiver no modo Situação Geral
+    if (currentModo === 'jurisdicao') {
+      document.getElementById('search-input').value = '';
+      applyFilters();
+    }
   });
 
   setTimeout(() => { map.invalidateSize(); }, 200);
