@@ -2380,12 +2380,11 @@ const REC_LABELS = {
 // Normalizar conceito LVC para chave da matriz
 function normConceito(c) {
   if (!c) return null;
-  c = String(c).trim().toUpperCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, ''); // remover acentos
-  if (c === 'BOM') return 'Bom';
-  if (c === 'REGULAR') return 'Regular';
-  if (c === 'RUIM') return 'Ruim';
-  if (c === 'PESSIMO' || c === 'PÉSSIMO') return 'Péssimo';
+  const s = String(c).trim().toLowerCase();
+  if (s === 'bom') return 'Bom';
+  if (s === 'regular') return 'Regular';
+  if (s === 'ruim') return 'Ruim';
+  if (s === 'péssimo' || s === 'pessimo') return 'Péssimo';
   return null;
 }
 
@@ -2402,10 +2401,12 @@ function getTrechoConceito(data, ano, trecho) {
   if (!feats.length) return null;
   const counter = {};
   feats.forEach(f => {
-    const c = normConceito(f.properties.conceito || f.properties.condicao);
+    const raw = f.properties.conceito || f.properties.condicao || '';
+    const c = normConceito(raw);
     if (c) counter[c] = (counter[c]||0) + 1;
   });
-  return Object.entries(counter).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
+  const result = Object.entries(counter).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
+  return result;
 }
 
 async function loadRecuperacao() {
@@ -2426,15 +2427,6 @@ async function loadRecuperacao() {
   );
 
   await Promise.all(promises);
-
-  // Verificar se carregou
-  console.log('Dados carregados — LVC:', !!lvcData, '| IRI:', !!iriData, '| FWD:', !!fwdData);
-  if (lvcData) {
-    const anos = Object.keys(lvcData.data || lvcData);
-    console.log('LVC anos:', anos);
-    const primeiro = (lvcData.data || lvcData)[anos[0]];
-    if (primeiro && primeiro[0]) console.log('LVC props ex:', JSON.stringify(primeiro[0].properties));
-  }
 
   renderRecuperacao();
 }
