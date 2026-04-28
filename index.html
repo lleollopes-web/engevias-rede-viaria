@@ -281,6 +281,7 @@
   #iri-panel.active { display:flex; }
   #fwd-panel { display:none; flex-direction:column; }
   #fwd-panel.active { display:flex; }
+  #rec-panel.active { display:flex !important; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
     padding:12px 16px; border-radius:10px; border:2px solid var(--border);
@@ -2261,6 +2262,269 @@ function updateResumoCard(modo, features) {
   card.classList.add('active');
 }
 
+// ── Recuperação Funcional ────────────────────────────────────────────────────
+let recLayerGroup = null;
+let recCurrentAno = null;
+
+// Matriz de intervenção LVC x IRI x FWD
+const MATRIZ = {
+  'Bom|Bom|Bom':         'NADA A FAZER',
+  'Bom|Bom|Regular':     'NADA A FAZER',
+  'Bom|Bom|Ruim':        'REPAROS LOCALIZADOS',
+  'Bom|Bom|Péssimo':     'REPAROS LOCALIZADOS',
+  'Bom|Regular|Bom':     'REPAROS LOCALIZADOS',
+  'Bom|Regular|Regular': 'REPAROS LOCALIZADOS',
+  'Bom|Regular|Ruim':    'REPERFILAGEM + TSD',
+  'Bom|Regular|Péssimo': 'RECICLAGEM',
+  'Bom|Ruim|Bom':        'MICRORREVESTIMENTO',
+  'Bom|Ruim|Regular':    'MICRORREVESTIMENTO',
+  'Bom|Ruim|Ruim':       'REPERFILAGEM + TSD',
+  'Bom|Ruim|Péssimo':    'RECICLAGEM',
+  'Bom|Péssimo|Bom':     'MICRORREVESTIMENTO',
+  'Bom|Péssimo|Regular': 'MICRORREVESTIMENTO',
+  'Bom|Péssimo|Ruim':    'REPERFILAGEM + TSD',
+  'Bom|Péssimo|Péssimo': 'RECICLAGEM',
+  'Regular|Bom|Bom':     'REPAROS LOCALIZADOS',
+  'Regular|Bom|Regular': 'REPAROS LOCALIZADOS',
+  'Regular|Bom|Ruim':    'REPERFILAGEM + TSD',
+  'Regular|Bom|Péssimo': 'RECICLAGEM',
+  'Regular|Regular|Bom':     'REPAROS LOCALIZADOS',
+  'Regular|Regular|Regular': 'REPAROS LOCALIZADOS',
+  'Regular|Regular|Ruim':    'REPERFILAGEM + TSD',
+  'Regular|Regular|Péssimo': 'RECICLAGEM',
+  'Regular|Ruim|Bom':     'RECICLAGEM',
+  'Regular|Ruim|Regular': 'RECICLAGEM',
+  'Regular|Ruim|Ruim':    'REPERFILAGEM + TSD',
+  'Regular|Ruim|Péssimo': 'RECICLAGEM',
+  'Regular|Péssimo|Bom':     'RECICLAGEM',
+  'Regular|Péssimo|Regular': 'RECICLAGEM',
+  'Regular|Péssimo|Ruim':    'REPERFILAGEM + TSD',
+  'Regular|Péssimo|Péssimo': 'RECICLAGEM',
+  'Ruim|Bom|Bom':     'MICRORREVESTIMENTO',
+  'Ruim|Bom|Regular': 'MICRORREVESTIMENTO',
+  'Ruim|Bom|Ruim':    'REPERFILAGEM + TSD',
+  'Ruim|Bom|Péssimo': 'RECICLAGEM',
+  'Ruim|Regular|Bom':     'MICRORREVESTIMENTO',
+  'Ruim|Regular|Regular': 'MICRORREVESTIMENTO',
+  'Ruim|Regular|Ruim':    'REPERFILAGEM + TSD',
+  'Ruim|Regular|Péssimo': 'RECICLAGEM',
+  'Ruim|Ruim|Bom':     'RECICLAGEM',
+  'Ruim|Ruim|Regular': 'RECICLAGEM',
+  'Ruim|Ruim|Ruim':    'REPERFILAGEM + TSD',
+  'Ruim|Ruim|Péssimo': 'RECICLAGEM',
+  'Ruim|Péssimo|Bom':     'RECICLAGEM',
+  'Ruim|Péssimo|Regular': 'RECICLAGEM',
+  'Ruim|Péssimo|Ruim':    'REPERFILAGEM + TSD',
+  'Ruim|Péssimo|Péssimo': 'RECICLAGEM',
+  'Péssimo|Bom|Bom':     'MICRORREVESTIMENTO',
+  'Péssimo|Bom|Regular': 'MICRORREVESTIMENTO',
+  'Péssimo|Bom|Ruim':    'REPERFILAGEM + TSD',
+  'Péssimo|Bom|Péssimo': 'RECICLAGEM',
+  'Péssimo|Regular|Bom':     'RECICLAGEM',
+  'Péssimo|Regular|Regular': 'RECICLAGEM',
+  'Péssimo|Regular|Ruim':    'RECICLAGEM',
+  'Péssimo|Regular|Péssimo': 'RECICLAGEM',
+  'Péssimo|Ruim|Bom':     'RECICLAGEM',
+  'Péssimo|Ruim|Regular': 'RECICLAGEM',
+  'Péssimo|Ruim|Ruim':    'RECICLAGEM',
+  'Péssimo|Ruim|Péssimo': 'RECICLAGEM',
+  'Péssimo|Péssimo|Bom':     'RECICLAGEM',
+  'Péssimo|Péssimo|Regular': 'RECICLAGEM',
+  'Péssimo|Péssimo|Ruim':    'REPERFILAGEM + TSD',
+  'Péssimo|Péssimo|Péssimo': 'RECICLAGEM',
+};
+
+const REC_COLORS = {
+  'NADA A FAZER':      '#22c55e',
+  'REPAROS LOCALIZADOS': '#facc15',
+  'MICRORREVESTIMENTO':  '#f97316',
+  'REPERFILAGEM + TSD':  '#ef4444',
+  'RECICLAGEM':          '#7c3aed',
+  'SEM DADOS':           '#94a3b8',
+};
+
+const REC_LABELS = {
+  'NADA A FAZER':        'Nada a fazer',
+  'REPAROS LOCALIZADOS': 'Reparos Localizados',
+  'MICRORREVESTIMENTO':  'Microrrevestimento c/ 2 Camadas',
+  'REPERFILAGEM + TSD':  'Reperfilagem + TSD',
+  'RECICLAGEM':          'Reciclagem da Base + TSD',
+  'SEM DADOS':           'Dados insuficientes',
+};
+
+// Normalizar conceito LVC para chave da matriz
+function normConceito(c) {
+  if (!c) return null;
+  c = String(c).trim();
+  if (c === 'BOM' || c === 'Bom') return 'Bom';
+  if (c === 'REGULAR' || c === 'Regular') return 'Regular';
+  if (c === 'RUIM' || c === 'Ruim') return 'Ruim';
+  if (c === 'PESSIMO' || c === 'PÉSSIMO' || c === 'Péssimo' || c === 'Pessimo') return 'Péssimo';
+  return null;
+}
+
+// Buscar conceito mais frequente de um trecho em um ano
+function getTrechoConceito(data, ano, trecho) {
+  const feats = (data[ano] || []).filter(f =>
+    f.properties.trecho === trecho || f.properties.name === trecho
+  );
+  if (!feats.length) return null;
+  // Conceito mais frequente
+  const counter = {};
+  feats.forEach(f => {
+    const c = normConceito(f.properties.conceito || f.properties.condicao || f.properties.condicao);
+    if (c) counter[c] = (counter[c]||0) + 1;
+  });
+  return Object.entries(counter).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
+}
+
+async function loadRecuperacao() {
+  // Garantir que LVC, IRI e FWD estão carregados
+  const promises = [];
+  if (!lvcData) promises.push(fetch('/lvc').then(r=>r.json()).then(d=>{lvcData=d;}));
+  if (!iriData) promises.push(fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}));
+  if (!fwdData) promises.push(fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=d;}));
+  await Promise.all(promises);
+
+  // Usar ano mais recente disponível em comum
+  const anosLvc = lvcData ? lvcData.anos : [];
+  const anosIri = iriData ? iriData.anos : [];
+  const anosFwd = fwdData ? fwdData.anos : [];
+  const anosComuns = ['2025','2024','2023'].filter(a =>
+    anosLvc.includes(a) && anosIri.includes(a) && anosFwd.includes(a)
+  );
+
+  // Habilitar/desabilitar botões de ano
+  document.querySelectorAll('#rec-ano-wrap .lvc-ano-btn').forEach(btn => {
+    const ano = btn.dataset.ano;
+    const disponivel = anosLvc.includes(ano) || anosIri.includes(ano) || anosFwd.includes(ano);
+    btn.disabled = !disponivel;
+    btn.style.opacity = disponivel ? '1' : '0.4';
+  });
+
+  const anoInicial = anosComuns[0] || '2025';
+  recSelectAno(anoInicial);
+}
+
+function recSelectAno(ano) {
+  recCurrentAno = ano;
+  document.querySelectorAll('#rec-ano-wrap .lvc-ano-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.ano === ano);
+  });
+  renderRecuperacao();
+}
+
+function renderRecuperacao() {
+  if (!recCurrentAno) return;
+  if (!recLayerGroup) recLayerGroup = L.layerGroup().addTo(map);
+  recLayerGroup.clearLayers();
+
+  const ano = recCurrentAno;
+  const stats = {};
+  Object.keys(REC_COLORS).forEach(k => stats[k] = 0);
+
+  // Para cada segmento do roads_data, calcular intervenção
+  allFeatures.forEach(feat => {
+    const name = feat.properties.name;
+    if (!name) return;
+
+    // Buscar conceitos nos 3 módulos
+    const lvcC = lvcData ? getTrechoConceito(lvcData.data, ano, name) : null;
+    const iriC = iriData ? getTrechoConceito(iriData.data, ano, name) : null;
+    const fwdC = fwdData ? getTrechoConceito(fwdData.data, ano, name) : null;
+
+    let intervencao, faltam = [];
+    if (!lvcC) faltam.push('LVC');
+    if (!iriC) faltam.push('IRI');
+    if (!fwdC) faltam.push('FWD');
+
+    if (faltam.length > 0) {
+      intervencao = 'SEM DADOS';
+    } else {
+      const key = `${lvcC}|${iriC}|${fwdC}`;
+      intervencao = MATRIZ[key] || 'SEM DADOS';
+    }
+
+    stats[intervencao] = (stats[intervencao] || 0) + 1;
+
+    const color = REC_COLORS[intervencao] || '#94a3b8';
+    const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
+    const line = L.polyline(coords, {
+      color, weight: intervencao === 'SEM DADOS' ? 2 : 4,
+      opacity: intervencao === 'SEM DADOS' ? 0.35 : 0.9,
+      dashArray: intervencao === 'SEM DADOS' ? '5,5' : null,
+      smoothFactor: 1
+    });
+
+    let tooltipHtml = `<b>${feat.properties.rodovia} — ${name}</b><br>`;
+    if (faltam.length > 0) {
+      tooltipHtml += `<span style="color:#f87171">⚠ Faltam dados: ${faltam.join(', ')}</span><br>`;
+      tooltipHtml += `<span style="color:#94a3b8;font-size:11px">Dados insuficientes para tomada de decisão</span>`;
+    } else {
+      tooltipHtml += `LVC: <b>${lvcC}</b> | IRI: <b>${iriC}</b> | FWD: <b>${fwdC}</b><br>`;
+      tooltipHtml += `<span style="color:${color};font-weight:700">➜ ${REC_LABELS[intervencao]}</span>`;
+    }
+    line.bindTooltip(tooltipHtml, {sticky: true});
+
+    // Ao clicar: mostrar detalhes completos
+    line.on('click', () => {
+      const infoTitle = document.getElementById('info-title');
+      const infoId = document.getElementById('info-id');
+      const infoContent = document.getElementById('info-content');
+      const p = feat.properties;
+      infoTitle.textContent = p.rodovia + ' — ' + name;
+      infoId.textContent = name;
+      let html = `<div style="padding:8px 0;">`;
+      if (faltam.length > 0) {
+        html += `<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+          <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:4px;">⚠ Dados insuficientes</div>
+          <div style="font-size:12px;color:#7f1d1d;">Faltam dados de <b>${faltam.join(', ')}</b> para tomada de decisão.</div>
+        </div>`;
+      } else {
+        html += `<div style="background:${color}22;border-left:4px solid ${color};padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">INTERVENÇÃO SUGERIDA</div>
+          <div style="font-size:13px;font-weight:700;color:${color};">${REC_LABELS[intervencao]}</div>
+        </div>`;
+      }
+      html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 4px;color:var(--text3);">LVC</td>
+          <td style="padding:6px 4px;font-weight:600;text-align:right;">${lvcC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 4px;color:var(--text3);">IRI</td>
+          <td style="padding:6px 4px;font-weight:600;text-align:right;">${iriC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:6px 4px;color:var(--text3);">FWD</td>
+          <td style="padding:6px 4px;font-weight:600;text-align:right;">${fwdC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 4px;color:var(--text3);">Extensão</td>
+          <td style="padding:6px 4px;font-weight:600;text-align:right;">${((parseFloat(String(p.km_fim).replace(',','.')) - parseFloat(String(p.km_ini).replace(',','.'))) || 0).toFixed(3)} km</td>
+        </tr>
+      </table></div>`;
+      infoContent.innerHTML = html;
+      document.getElementById('info-panel').classList.add('active');
+    });
+
+    line.addTo(recLayerGroup);
+  });
+
+  // Atualizar estatísticas
+  const statsEl = document.getElementById('rec-stats');
+  statsEl.innerHTML = Object.entries(stats)
+    .filter(([k,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1])
+    .map(([k,v]) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+      <span style="display:flex;align-items:center;gap:5px;">
+        <span style="width:12px;height:12px;border-radius:3px;background:${REC_COLORS[k]};display:inline-block;flex-shrink:0;"></span>
+        <span style="color:var(--text2)">${REC_LABELS[k]}</span>
+      </span>
+      <span style="font-weight:700;color:${REC_COLORS[k]}">${v.toLocaleString('pt-BR')}</span>
+    </div>`).join('');
+}
+
 // ── Aliases mantidos ─────────────────────────────────────────────────────────
 function initLvcFilters() { /* substituído por initMultiFilters */ }
 
@@ -2502,6 +2766,7 @@ function setModo(modo) {
   if (lvcLayerGroup) lvcLayerGroup.clearLayers();
   if (iriLayerGroup) iriLayerGroup.clearLayers();
   if (fwdLayerGroup) fwdLayerGroup.clearLayers();
+  if (recLayerGroup) recLayerGroup.clearLayers();
   ['lvc','iri','fwd'].forEach(m => {
     const c = document.getElementById(m+'-resumo-card');
     if (c) c.classList.remove('active');
@@ -2525,7 +2790,13 @@ function setModo(modo) {
     return;
   }
   if (modo === 'recfuncional') {
-    openDevModal('Recuperação Funcional');
+    document.getElementById('rec-panel').classList.add('active');
+    document.getElementById('segments-list').style.display   = 'none';
+    document.getElementById('list-header').style.display     = 'none';
+    document.getElementById('juris-filters').style.display   = 'none';
+    layerGroup.clearLayers();
+    closeDiagram();
+    loadRecuperacao();
     return;
   }
   if (modo === 'lvc') {
@@ -2540,6 +2811,7 @@ function setModo(modo) {
     document.getElementById('lvc-panel').classList.remove('active');
     document.getElementById('iri-panel').classList.remove('active');
     document.getElementById('fwd-panel').classList.remove('active');
+    document.getElementById('rec-panel').classList.remove('active');
     document.getElementById('segments-list').style.display   = '';
     document.getElementById('list-header').style.display     = '';
     document.getElementById('juris-filters').style.display   = '';
@@ -2654,6 +2926,37 @@ function renderLVC() {
       <div class="mob-modal-footer">
         <button class="mob-modal-apply" onclick="closeMobModal()">Aplicar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Painel Recuperação Funcional -->
+  <div id="rec-panel" style="display:none;flex-direction:column;">
+    <div style="padding:8px 16px 6px;">
+      <div class="sidebar-label" style="margin-bottom:2px">Recuperação Funcional</div>
+      <div style="font-size:11px;color:var(--text3)">Matriz de Intervenção LVC + IRI + FWD</div>
+    </div>
+    <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
+      <div class="sidebar-label" style="margin-bottom:6px">Selecionar Ano</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="rec-ano-wrap">
+        <button class="lvc-ano-btn" data-ano="2023" onclick="recSelectAno('2023')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2023</button>
+        <button class="lvc-ano-btn" data-ano="2024" onclick="recSelectAno('2024')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2024</button>
+        <button class="lvc-ano-btn" data-ano="2025" onclick="recSelectAno('2025')" style="flex:1;min-width:60px;font-size:13px;padding:7px 4px;justify-content:center;">2025</button>
+      </div>
+    </div>
+    <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
+      <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#22c55e;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Nada a fazer</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#facc15;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reparos Localizados</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#f97316;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Microrrevestimento c/ 2 Camadas</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#ef4444;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reperfilagem + TSD</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#7c3aed;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reciclagem da Base + TSD</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>Dados insuficientes</div>
+      </div>
+    </div>
+    <div style="padding:8px 16px;">
+      <div class="sidebar-label" style="margin-bottom:4px">Estatísticas</div>
+      <div id="rec-stats" style="font-size:11px;display:flex;flex-direction:column;gap:2px;"></div>
     </div>
   </div>
 
