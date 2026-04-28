@@ -281,6 +281,7 @@
   #iri-panel.active { display:flex; }
   #fwd-panel { display:none; flex-direction:column; }
   #fwd-panel.active { display:flex; }
+  #rec-panel { display:none; flex-direction:column; }
   #rec-panel.active { display:flex !important; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
@@ -2440,17 +2441,28 @@ function renderRecuperacao() {
     const name = feat.properties.name;
     if (!name) return;
 
-    // LVC: fixo 2025; IRI e FWD: fallback 2025 → 2024 → 2023
-    const lvcRes = lvcData ? getTrechoConceitoFallback(lvcData, name, ['2025']) : null;
-    const iriRes = iriData ? getTrechoConceitoFallback(iriData, name, ['2025','2024','2023']) : null;
-    const fwdRes = fwdData ? getTrechoConceitoFallback(fwdData, name, ['2025','2024','2023']) : null;
+    // LVC: usar 2025 (fixo)
+    // IRI/FWD: acumulativo — usa o mais recente disponível
+    const lvcC = lvcData ? getTrechoConceito(lvcData.data || lvcData, '2025', name) : null;
+    const lvcAno = lvcC ? '2025' : null;
 
-    const lvcC = lvcRes?.conceito || null;
-    const iriC = iriRes?.conceito || null;
-    const fwdC = fwdRes?.conceito || null;
-    const lvcAno = lvcRes?.ano || null;
-    const iriAno = iriRes?.ano || null;
-    const fwdAno = fwdRes?.ano || null;
+    // IRI: pega o ano mais recente com dados
+    let iriC = null, iriAno = null;
+    if (iriData) {
+      for (const ano of ['2025','2024','2023']) {
+        const c = getTrechoConceito(iriData.data || iriData, ano, name);
+        if (c) { iriC = c; iriAno = ano; break; }
+      }
+    }
+
+    // FWD: pega o ano mais recente com dados
+    let fwdC = null, fwdAno = null;
+    if (fwdData) {
+      for (const ano of ['2025','2024','2023']) {
+        const c = getTrechoConceito(fwdData.data || fwdData, ano, name);
+        if (c) { fwdC = c; fwdAno = ano; break; }
+      }
+    }
 
     let intervencao, faltam = [];
     if (!lvcC) faltam.push('LVC');
