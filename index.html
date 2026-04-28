@@ -827,15 +827,25 @@
         <div>📋 <b>LVC:</b> 2025 | <b>IRI/FWD:</b> 2025→2024→2023</div>
       </div>
     </div>
-    <!-- Legenda análise -->
-    <div style="padding:4px 12px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);">
-      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
-        <span style="width:16px;height:4px;background:#1e7fa0;border-radius:2px;flex-shrink:0;"></span>
-        <b>Linha grossa</b> = LVC+IRI+FWD
-      </div>
-      <div style="display:flex;align-items:center;gap:5px;">
-        <span style="width:16px;height:4px;background:#888;border-radius:2px;flex-shrink:0;border:1px dashed #555;"></span>
-        <b>Linha fina</b> = LVC+IRI (sem FWD)
+    <!-- Filtros de análise -->
+    <div style="padding:6px 12px;border-bottom:1px solid var(--border);">
+      <div class="sidebar-label" style="margin-bottom:5px;">Exibir análise</div>
+      <div style="display:flex;gap:4px;">
+        <button id="rec-vis-3" onclick="recSetVis(3)"
+          style="flex:1;padding:5px 2px;font-size:10px;font-weight:700;border:2px solid #1e7fa0;
+                 background:#1e7fa0;color:#fff;border-radius:6px;cursor:pointer;">
+          ✓ LVC+IRI+FWD
+        </button>
+        <button id="rec-vis-2" onclick="recSetVis(2)"
+          style="flex:1;padding:5px 2px;font-size:10px;font-weight:700;border:2px solid #1e7fa0;
+                 background:#1e7fa0;color:#fff;border-radius:6px;cursor:pointer;">
+          ✓ LVC+IRI
+        </button>
+        <button id="rec-vis-both" onclick="recSetVis(0)"
+          style="flex:1;padding:5px 2px;font-size:10px;font-weight:700;border:2px solid var(--border);
+                 background:var(--surface2);color:var(--text2);border-radius:6px;cursor:pointer;">
+          Ambas
+        </button>
       </div>
     </div>
     <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
@@ -2101,6 +2111,42 @@ function renderFwdDiagram(name) {
   content.appendChild(xaxis);
 }
 
+// ── Recuperação Funcional — Info Panel ───────────────────────────────────────
+function showRecInfo(feat, name, lvcC, iriC, fwdC, lvcAno, iriAno, fwdAno, intervencao, faltam) {
+  const p = feat.properties;
+  const color = REC_COLORS[intervencao] || '#94a3b8';
+  document.getElementById('info-title').textContent = p.rodovia + ' — ' + name;
+  document.getElementById('info-id').textContent = name;
+  let html = '<div style="padding:8px 0;">';
+  if (faltam && faltam.length > 0) {
+    html += `<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:4px;">⚠ Dados insuficientes</div>
+      <div style="font-size:12px;color:#7f1d1d;">Faltam dados de <b>${faltam.join(', ')}</b></div>
+    </div>`;
+  } else {
+    html += `<div style="background:${color}22;border-left:4px solid ${color};padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">INTERVENÇÃO SUGERIDA</div>
+      <div style="font-size:13px;font-weight:700;color:${color};">${REC_LABELS[intervencao]}</div>
+    </div>`;
+  }
+  html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 4px;color:var(--text3);">LVC ${lvcAno||''}</td>
+      <td style="padding:6px 4px;font-weight:600;text-align:right;">${lvcC||'<span style="color:#94a3b8">Sem dados</span>'}</td>
+    </tr>
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 4px;color:var(--text3);">IRI ${iriAno||''}</td>
+      <td style="padding:6px 4px;font-weight:600;text-align:right;">${iriC||'<span style="color:#94a3b8">Sem dados</span>'}</td>
+    </tr>
+    ${fwdC !== null ? `<tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:6px 4px;color:var(--text3);">FWD ${fwdAno||''}</td>
+      <td style="padding:6px 4px;font-weight:600;text-align:right;">${fwdC||'<span style="color:#94a3b8">Sem dados</span>'}</td>
+    </tr>` : ''}
+  </table></div>`;
+  document.getElementById('info-content').innerHTML = html;
+  document.getElementById('info-panel').classList.add('active');
+}
+
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
 let kmModeActive = false;
 let kmFeatures = []; // cache das features com coords lat/lng
@@ -2469,14 +2515,33 @@ function getTrechoConceito(data, ano, trecho) {
   return result;
 }
 
-let recTab = 3; // 3 = LVC+IRI+FWD, 2 = LVC+IRI
+let recVis = 0; // 0=ambas, 3=só LVC+IRI+FWD, 2=só LVC+IRI
 
-function recSetTab(n) {
-  recTab = n;
-  document.getElementById('rec-tab-3').style.background = n===3 ? '#1e7fa0' : 'var(--surface2)';
-  document.getElementById('rec-tab-3').style.color = n===3 ? '#fff' : 'var(--text2)';
-  document.getElementById('rec-tab-2').style.background = n===2 ? '#1e7fa0' : 'var(--surface2)';
-  document.getElementById('rec-tab-2').style.color = n===2 ? '#fff' : 'var(--text2)';
+function recSetVis(v) {
+  recVis = v;
+  const btn3 = document.getElementById('rec-vis-3');
+  const btn2 = document.getElementById('rec-vis-2');
+  const btnB = document.getElementById('rec-vis-both');
+  // Reset todos
+  [btn3,btn2,btnB].forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.color = 'var(--text2)';
+    b.style.borderColor = 'var(--border)';
+    b.textContent = b.textContent.replace('✓ ','');
+  });
+  // Ativar selecionado
+  if (v === 3) {
+    btn3.style.background = '#1e7fa0'; btn3.style.color = '#fff'; btn3.style.borderColor = '#1e7fa0';
+    btn3.textContent = '✓ LVC+IRI+FWD';
+  } else if (v === 2) {
+    btn2.style.background = '#1e7fa0'; btn2.style.color = '#fff'; btn2.style.borderColor = '#1e7fa0';
+    btn2.textContent = '✓ LVC+IRI';
+  } else {
+    btn3.style.background = '#1e7fa0'; btn3.style.color = '#fff'; btn3.style.borderColor = '#1e7fa0';
+    btn3.textContent = '✓ LVC+IRI+FWD';
+    btn2.style.background = '#1e7fa0'; btn2.style.color = '#fff'; btn2.style.borderColor = '#1e7fa0';
+    btn2.textContent = '✓ LVC+IRI';
+  }
   renderRecuperacao();
 }
 
@@ -2533,7 +2598,7 @@ function renderRecuperacao() {
   const stats2 = {}; // LVC+IRI apenas
   Object.keys(REC_COLORS).forEach(k => { stats3[k]={count:0,ext:0}; stats2[k]={count:0,ext:0}; });
 
-  // CAMADA 1: LVC+IRI (fina, por baixo)
+  // CAMADA 1: LVC+IRI (por baixo, só se visível)
   allFeatures.forEach(feat => {
     const name = feat.properties.name;
     if (!name) return;
@@ -2541,17 +2606,27 @@ function renderRecuperacao() {
     const kmFim = parseFloat(String(feat.properties.km_fim).replace(',','.')) || 0;
     const extKm = Math.abs(kmFim - kmIni);
     const lvcC = lvcData ? getTrechoConceito(lvcData.data||lvcData,'2025',name) : null;
-    let iriC = null, iriAno = null;
-    if (iriData) for (const a of ['2025','2024','2023']) { const c=getTrechoConceito(iriData.data||iriData,a,name); if(c){iriC=c;iriAno=a;break;} }
+    let iriC = null;
+    if (iriData) for (const a of ['2025','2024','2023']) { const c=getTrechoConceito(iriData.data||iriData,a,name); if(c){iriC=c;break;} }
     const faltam2 = [];
     if (!lvcC) faltam2.push('LVC');
     if (!iriC) faltam2.push('IRI');
     const interv2 = faltam2.length > 0 ? 'SEM DADOS' : (MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS');
     if (!stats2[interv2]) stats2[interv2]={count:0,ext:0};
     stats2[interv2].count++; stats2[interv2].ext+=extKm;
+
+    if (recVis !== 2 && recVis !== 0) return; // só desenha se vis=2 ou ambas
     const color2 = REC_COLORS[interv2] || '#94a3b8';
     const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const line2 = L.polyline(coords, {color:color2, weight:2, opacity:0.5, dashArray:'6,4', smoothFactor:1});
+    const line2 = L.polyline(coords, {
+      color: color2, weight: 4, opacity: interv2==='SEM DADOS'?0.2:0.85,
+      dashArray: interv2==='SEM DADOS'?'5,5':null, smoothFactor:1
+    });
+    // Tooltip
+    line2.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>` +
+      `<span style="font-size:10px;color:#94a3b8">LVC+IRI</span><br>` +
+      `<span style="color:${color2};font-weight:700">➜ ${REC_LABELS[interv2]}</span>`, {sticky:true});
+    line2.on('click', () => showRecInfo(feat, name, lvcC, iriC, null, null, null, null, interv2, faltam2));
     line2.addTo(recLayerGroup);
   });
 
@@ -2571,11 +2646,15 @@ function renderRecuperacao() {
     if (!lvcC) faltam.push('LVC');
     if (!iriC) faltam.push('IRI');
     if (!fwdC) faltam.push('FWD');
-    // Só desenha linha grossa se tiver os 3 módulos
-    if (faltam.length > 0) return;
+    // Calcular intervenção LVC+IRI+FWD
+    if (faltam.length > 0) {
+      // Sem dados FWD — só conta na estatística se estiver visível
+      return;
+    }
     const intervencao = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
     if (!stats3[intervencao]) stats3[intervencao]={count:0,ext:0};
     stats3[intervencao].count++; stats3[intervencao].ext+=extKm;
+    if (recVis === 2) return; // só LVC+IRI — não desenha esta camada
 
     const color = REC_COLORS[intervencao] || '#94a3b8';
     const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
@@ -2586,59 +2665,18 @@ function renderRecuperacao() {
       smoothFactor: 1
     });
 
-    let tooltipHtml = `<b>${feat.properties.rodovia} — ${name}</b><br>`;
-    if (faltam.length > 0) {
-      tooltipHtml += `<span style="color:#f87171">⚠ Faltam dados: ${faltam.join(', ')}</span><br>`;
-      tooltipHtml += `<span style="color:#94a3b8;font-size:11px">Dados insuficientes para tomada de decisão</span>`;
-    } else {
-      tooltipHtml += `LVC ${lvcAno}: <b>${lvcC}</b> | IRI ${iriAno}: <b>${iriC}</b> | FWD ${fwdAno}: <b>${fwdC}</b><br>`;
-      tooltipHtml += `<span style="color:${color};font-weight:700">➜ ${REC_LABELS[intervencao]}</span>`;
-    }
-    line.bindTooltip(tooltipHtml, {sticky: true});
-
-    // Ao clicar: mostrar detalhes completos
-    line.on('click', () => {
-      const infoTitle = document.getElementById('info-title');
-      const infoId = document.getElementById('info-id');
-      const infoContent = document.getElementById('info-content');
-      const p = feat.properties;
-      infoTitle.textContent = p.rodovia + ' — ' + name;
-      infoId.textContent = name;
-      let html = `<div style="padding:8px 0;">`;
-      if (faltam.length > 0) {
-        html += `<div style="background:#fef2f2;border-left:4px solid #ef4444;padding:10px 12px;border-radius:6px;margin-bottom:10px;">
-          <div style="font-size:12px;font-weight:700;color:#dc2626;margin-bottom:4px;">⚠ Dados insuficientes</div>
-          <div style="font-size:12px;color:#7f1d1d;">Faltam dados de <b>${faltam.join(', ')}</b> para tomada de decisão.</div>
-        </div>`;
-      } else {
-        html += `<div style="background:${color}22;border-left:4px solid ${color};padding:10px 12px;border-radius:6px;margin-bottom:10px;">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">INTERVENÇÃO SUGERIDA</div>
-          <div style="font-size:13px;font-weight:700;color:${color};">${REC_LABELS[intervencao]}</div>
-        </div>`;
-      }
-      html += `<table style="width:100%;font-size:12px;border-collapse:collapse;">
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">LVC ${lvcAno||''}</td>
-          <td style="padding:6px 4px;font-weight:600;text-align:right;">${lvcC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">IRI ${iriAno||''}</td>
-          <td style="padding:6px 4px;font-weight:600;text-align:right;">${iriC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:6px 4px;color:var(--text3);">FWD ${fwdAno||''}</td>
-          <td style="padding:6px 4px;font-weight:600;text-align:right;">${fwdC || '<span style="color:#94a3b8">Sem dados</span>'}</td>
-        </tr>
-        <tr>
-          <td style="padding:6px 4px;color:var(--text3);">Extensão</td>
-          <td style="padding:6px 4px;font-weight:600;text-align:right;">${((parseFloat(String(p.km_fim).replace(',','.')) - parseFloat(String(p.km_ini).replace(',','.'))) || 0).toFixed(3)} km</td>
-        </tr>
-      </table></div>`;
-      infoContent.innerHTML = html;
-      document.getElementById('info-panel').classList.add('active');
-    });
-
-    line.addTo(recLayerGroup);
+    const color3 = REC_COLORS[intervencao] || '#94a3b8';
+    const coords3 = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
+    const line3 = L.polyline(coords3, {color:color3, weight:4, opacity:0.95, smoothFactor:1});
+    line3.bindTooltip(
+      `<b>${feat.properties.rodovia} — ${name}</b><br>` +
+      `<span style="font-size:10px;color:#7dd3f0">LVC ${lvcAno} + IRI ${iriAno} + FWD ${fwdAno}</span><br>` +
+      `LVC:<b>${lvcC}</b> IRI:<b>${iriC}</b> FWD:<b>${fwdC}</b><br>` +
+      `<span style="color:${color3};font-weight:700">➜ ${REC_LABELS[intervencao]}</span>`,
+      {sticky:true}
+    );
+    line3.on('click', () => showRecInfo(feat, name, lvcC, iriC, fwdC, lvcAno, iriAno, fwdAno, intervencao, []));
+    line3.addTo(recLayerGroup);
   });
 
   // Estatísticas
