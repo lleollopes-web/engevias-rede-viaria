@@ -2364,15 +2364,19 @@ function normConceito(c) {
 }
 
 // Buscar conceito mais frequente de um trecho em um ano
+// Compara pela base do trecho (sem último char de sentido: D0/E0/S0 → base)
+function getTrechoBase(t) { return t ? t.slice(0, -2) : ''; }
+
 function getTrechoConceito(data, ano, trecho) {
-  const feats = (data[ano] || []).filter(f =>
-    f.properties.trecho === trecho || f.properties.name === trecho
-  );
+  const base = getTrechoBase(trecho);
+  const feats = (data[ano] || []).filter(f => {
+    const ft = f.properties.trecho || f.properties.name || '';
+    return ft === trecho || getTrechoBase(ft) === base;
+  });
   if (!feats.length) return null;
-  // Conceito mais frequente
   const counter = {};
   feats.forEach(f => {
-    const c = normConceito(f.properties.conceito || f.properties.condicao || f.properties.condicao);
+    const c = normConceito(f.properties.conceito || f.properties.condicao);
     if (c) counter[c] = (counter[c]||0) + 1;
   });
   return Object.entries(counter).sort((a,b)=>b[1]-a[1])[0]?.[0] || null;
