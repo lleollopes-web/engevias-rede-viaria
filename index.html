@@ -2417,7 +2417,19 @@ async function loadRecuperacao() {
   // Garantir que LVC, IRI e FWD estão carregados
   const promises = [];
   if (!lvcData) promises.push(
-    fetch('/lvc').then(r=>r.json()).then(d=>{lvcData=d;}).catch(e=>console.error('LVC erro:',e))
+    fetch('/lvc').then(r=>r.json()).then(d=>{
+      // Normalizar chaves de ano (ex: '025' → '2025')
+      if (d.data) {
+        const normalized = {};
+        Object.keys(d.data).forEach(k => {
+          const key = k.length === 3 ? '2' + k : k;
+          normalized[key] = d.data[k];
+        });
+        d.data = normalized;
+        d.anos = d.anos ? d.anos.map(a => a.length === 3 ? '2' + a : a) : Object.keys(normalized);
+      }
+      lvcData = d;
+    }).catch(e=>console.error('LVC erro:',e))
   );
   if (!iriData) promises.push(
     fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}).catch(e=>console.error('IRI erro:',e))
