@@ -2443,7 +2443,17 @@ function renderRecuperacao() {
 
     // LVC: usar 2025 (fixo)
     // IRI/FWD: acumulativo — usa o mais recente disponível
-    const lvcC = lvcData ? getTrechoConceito(lvcData.data || lvcData, '2025', name) : null;
+    const lvcDataObj = lvcData ? (lvcData.data || lvcData) : null;
+    const lvcRaw = lvcDataObj && lvcDataObj['2025'] ? lvcDataObj['2025'].filter(f => {
+      const ft = f.properties.trecho || f.properties.name || '';
+      return getTrechoBase(ft) === getTrechoBase(name);
+    }) : [];
+    // Log debug para verificar — remover depois
+    if (lvcRaw.length > 0 && !window._lvcLogged) {
+      console.log('LVC 2025 exemplo props:', JSON.stringify(lvcRaw[0].properties));
+      window._lvcLogged = true;
+    }
+    const lvcC = lvcData ? getTrechoConceito(lvcDataObj, '2025', name) : null;
     const lvcAno = lvcC ? '2025' : null;
 
     // IRI: pega o ano mais recente com dados
