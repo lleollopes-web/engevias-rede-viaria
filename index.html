@@ -1619,6 +1619,15 @@ function mfGetActiveNames(modo) {
 
 function mfApply(modo) {
   if (modo==='juris') applyFilters();
+  else if (modo==='fwd') {
+    if (fwdCurrentAno) renderFWD();
+    const activeNamesFwd = mfGetActiveNames('fwd');
+    if (activeNamesFwd && activeNamesFwd.size > 0 && activeNamesFwd.size <= 100) {
+      showFwdDiagramMulti([...activeNamesFwd]);
+    } else {
+      closeDiagram();
+    }
+  }
   else if (modo==='lvc') {
     if (currentAno) renderLVC();
     // Diagrama só aparece se houver filtro ativo (não null) com ≤50 segmentos
@@ -1772,6 +1781,12 @@ function fwdSelectAno(ano) {
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
   renderFWD();
+  const activeNamesFwd = mfGetActiveNames('fwd');
+  if (activeNamesFwd && activeNamesFwd.size > 0 && activeNamesFwd.size <= 100) {
+    showFwdDiagramMulti([...activeNamesFwd]);
+  } else {
+    closeDiagram();
+  }
 }
 
 function renderFWD() {
@@ -1879,6 +1894,77 @@ function extractSubPolyline(coords, totalLen, propIni, propFim) {
   }
   if (sub.length === 0 && coords.length > 0) sub.push(coords[coords.length-1]);
   return sub;
+}
+
+// ── Diagrama FWD ─────────────────────────────────────────────────────────────
+const FWD_DIAG_COLORS = { 'BOM':'#16a34a', 'REGULAR':'#eab308', 'RUIM':'#ef4444' };
+
+function showFwdDiagramMulti(names) {
+  if (!names || names.length === 0) { closeDiagram(); return; }
+  diagNames = names;
+  diagIndex = 0;
+  renderFwdDiagram(diagNames[0]);
+  updateDiagNav();
+  document.getElementById('lvc-diagram').classList.add('active');
+  updateKmBtnPosition();
+}
+
+function renderFwdDiagram(name) {
+  if (!fwdData || !fwdCurrentAno) return;
+  const content = document.getElementById('diag-content');
+  content.innerHTML = '';
+  document.getElementById('diag-title').textContent = 'FWD — ' + name + ' — Série Histórica';
+
+  const anos = fwdData.anos;
+  let maxKmFim = 0;
+  anos.forEach(ano => {
+    const segs = (fwdData.data[ano] || []).filter(f => f.properties.trecho === name);
+    if (segs.length) maxKmFim = Math.max(maxKmFim, Math.max(...segs.map(f => f.properties.km_fim)));
+  });
+  const kmTotal = maxKmFim / 1000; // metros → km
+
+  anos.forEach(ano => {
+    const segs = (fwdData.data[ano] || []).filter(f => f.properties.trecho === name);
+    if (!segs.length) return;
+
+    const row = document.createElement('div');
+    row.className = 'diag-row';
+
+    const lbl = document.createElement('div');
+    lbl.className = 'diag-ano-lbl';
+    lbl.innerHTML = `<span class="diag-ano-badge">${ano}</span>`;
+    row.appendChild(lbl);
+
+    const bar = document.createElement('div');
+    bar.className = 'diag-bar-wrap';
+    bar.style.cssText = 'flex:1;display:flex;height:18px;border-radius:4px;overflow:hidden;position:relative;';
+
+    segs.sort((a,b) => a.properties.km_ini - b.properties.km_ini);
+    segs.forEach(seg => {
+      const p = seg.properties;
+      const pct = ((p.km_fim - p.km_ini) / maxKmFim) * 100;
+      const color = FWD_DIAG_COLORS[p.condicao] || '#94a3b8';
+      const chunk = document.createElement('div');
+      chunk.style.cssText = `width:${pct}%;background:${color};`;
+      chunk.title = `${p.condicao} | D0: ${p.d0}µm | km ${(p.km_ini/1000).toFixed(2)}–${(p.km_fim/1000).toFixed(2)}`;
+      bar.appendChild(chunk);
+    });
+    row.appendChild(bar);
+    content.appendChild(row);
+  });
+
+  // Eixo X
+  const xaxis = document.createElement('div');
+  xaxis.className = 'diag-xaxis';
+  const interval = kmTotal < 2 ? 0.2 : kmTotal < 10 ? 1 : kmTotal < 30 ? 5 : 10;
+  const ticks = Math.floor(kmTotal / interval);
+  for (let i = 0; i <= ticks; i++) {
+    const t = document.createElement('div');
+    t.className = 'diag-xtick';
+    t.textContent = (i * interval).toFixed(interval < 1 ? 1 : 0) + 'km';
+    xaxis.appendChild(t);
+  }
+  content.appendChild(xaxis);
 }
 
 // ── KM Real-Time ─────────────────────────────────────────────────────────────
@@ -2108,6 +2194,8 @@ function diagNav(dir) {
   diagIndex = Math.max(0, Math.min(diagNames.length - 1, diagIndex + dir));
   if (currentModo === 'iri') {
     showIriDiagram(diagNames[diagIndex]);
+  } else if (currentModo === 'fwd') {
+    renderFwdDiagram(diagNames[diagIndex]);
   } else {
     renderDiagram(diagNames[diagIndex]);
   }
