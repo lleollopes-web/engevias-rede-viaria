@@ -456,6 +456,27 @@
   .mf-clear-btn:hover { background:#fee2e2; border-color:#f87171; }
   .mf-clear-btn.visible { display:block; }
 
+  /* ===== MARCA D'ÁGUA MAPA ===== */
+  #map-watermark {
+    display:none;
+    position:absolute;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%) rotate(-30deg);
+    z-index:500;
+    pointer-events:none;
+    font-family:'Inter Tight',sans-serif;
+    font-size:42px;
+    font-weight:900;
+    letter-spacing:4px;
+    text-transform:uppercase;
+    color:rgba(100,120,160,0.18);
+    white-space:nowrap;
+    user-select:none;
+    text-align:center;
+    line-height:1.4;
+  }
+  #map-watermark.active { display:block; }
+
   /* ===== CARD RESUMO LEVANTAMENTO ===== */
   .resumo-card {
     display:none; margin:10px 14px;
@@ -991,6 +1012,9 @@
 
     <div style="flex:1;position:relative;display:flex;flex-direction:column;overflow:hidden;">
       <div id="map"></div>
+      <!-- Marca d'água -->
+      <div id="map-watermark">Módulo em<br>Desenvolvimento</div>
+
       <!-- Botão ativar KM -->
       <button id="km-btn" onclick="toggleKmMode()" title="Medir km em tempo real">
         <span class="km-btn-icon">📍</span>
@@ -2355,11 +2379,12 @@ const REC_LABELS = {
 // Normalizar conceito LVC para chave da matriz
 function normConceito(c) {
   if (!c) return null;
-  c = String(c).trim();
-  if (c === 'BOM' || c === 'Bom') return 'Bom';
-  if (c === 'REGULAR' || c === 'Regular') return 'Regular';
-  if (c === 'RUIM' || c === 'Ruim') return 'Ruim';
-  if (c === 'PESSIMO' || c === 'PÉSSIMO' || c === 'Péssimo' || c === 'Pessimo') return 'Péssimo';
+  c = String(c).trim().toUpperCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, ''); // remover acentos
+  if (c === 'BOM') return 'Bom';
+  if (c === 'REGULAR') return 'Regular';
+  if (c === 'RUIM') return 'Ruim';
+  if (c === 'PESSIMO' || c === 'PÉSSIMO') return 'Péssimo';
   return null;
 }
 
@@ -2394,8 +2419,10 @@ async function loadRecuperacao() {
 
 // Buscar conceito com fallback de ano: 2025 → 2024 → 2023
 function getTrechoConceitoFallback(data, trecho, anos) {
+  // data pode ser o objeto completo {anos:[], data:{}} ou direto {2023:[...]}
+  const dataObj = data.data || data;
   for (const ano of anos) {
-    const c = getTrechoConceito(data.data, ano, trecho);
+    const c = getTrechoConceito(dataObj, ano, trecho);
     if (c) return { conceito: c, ano };
   }
   return null;
@@ -2763,6 +2790,7 @@ function setModo(modo) {
     const c = document.getElementById(m+'-resumo-card');
     if (c) c.classList.remove('active');
   });
+  document.getElementById('map-watermark').classList.remove('active');
   closeDiagram();
   closeInfo();
 
@@ -2783,6 +2811,7 @@ function setModo(modo) {
   }
   if (modo === 'recfuncional') {
     document.getElementById('rec-panel').classList.add('active');
+    document.getElementById('map-watermark').classList.add('active');
     document.getElementById('segments-list').style.display   = 'none';
     document.getElementById('list-header').style.display     = 'none';
     document.getElementById('juris-filters').style.display   = 'none';
