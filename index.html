@@ -466,11 +466,13 @@
     z-index:500;
     pointer-events:none;
     font-family:'Inter Tight',sans-serif;
-    font-size:42px;
+    font-size:52px;
     font-weight:900;
-    letter-spacing:4px;
+    letter-spacing:6px;
     text-transform:uppercase;
-    color:rgba(100,120,160,0.18);
+    color:rgba(80,110,160,0.25);
+    -webkit-text-stroke:1.5px rgba(60,90,140,0.3);
+    text-shadow:2px 2px 4px rgba(0,0,0,0.1);
     white-space:nowrap;
     user-select:none;
     text-align:center;
@@ -814,6 +816,45 @@
       </div><!-- /juris-filters -->
 
       <!-- Painel IRI -->
+<!-- Painel Recuperação Funcional -->
+  <div id="rec-panel">
+    <div style="padding:8px 16px 6px;">
+      <div class="sidebar-label" style="margin-bottom:2px">Recuperação Funcional</div>
+      <div style="font-size:11px;color:var(--text3)">Matriz de Intervenção LVC + IRI + FWD</div>
+    </div>
+    <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
+      <div style="font-size:10px;color:var(--text3);line-height:1.6;">
+        <div>📋 <b>LVC:</b> 2025 | <b>IRI/FWD:</b> 2025→2024→2023</div>
+      </div>
+    </div>
+    <!-- Legenda análise -->
+    <div style="padding:4px 12px;border-bottom:1px solid var(--border);font-size:10px;color:var(--text3);">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:2px;">
+        <span style="width:16px;height:4px;background:#1e7fa0;border-radius:2px;flex-shrink:0;"></span>
+        <b>Linha grossa</b> = LVC+IRI+FWD
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;">
+        <span style="width:16px;height:4px;background:#888;border-radius:2px;flex-shrink:0;border:1px dashed #555;"></span>
+        <b>Linha fina</b> = LVC+IRI (sem FWD)
+      </div>
+    </div>
+    <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
+      <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#22c55e;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Nada a fazer</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#facc15;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reparos Localizados</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#f97316;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Microrrevestimento c/ 2 Camadas</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#ef4444;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reperfilagem + TSD</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#7c3aed;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reciclagem da Base + TSD</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>Dados insuficientes</div>
+      </div>
+    </div>
+    <div style="padding:8px 16px;">
+      <div class="sidebar-label" style="margin-bottom:4px">Resumo por Intervenção</div>
+      <div id="rec-stats" style="font-size:11px;display:flex;flex-direction:column;gap:3px;"></div>
+    </div>
+  </div>
+
       <div id="iri-panel">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:4px">Condição do IRI</div>
@@ -2488,64 +2529,53 @@ function renderRecuperacao() {
   if (!recLayerGroup) recLayerGroup = L.layerGroup().addTo(map);
   recLayerGroup.clearLayers();
 
-  const stats = {}; // { intervencao: { count, ext_km } }
-  Object.keys(REC_COLORS).forEach(k => stats[k] = {count:0, ext:0});
+  const stats3 = {}; // LVC+IRI+FWD
+  const stats2 = {}; // LVC+IRI apenas
+  Object.keys(REC_COLORS).forEach(k => { stats3[k]={count:0,ext:0}; stats2[k]={count:0,ext:0}; });
 
-  // Para cada segmento do roads_data, calcular intervenção
+  // CAMADA 1: LVC+IRI (fina, por baixo)
   allFeatures.forEach(feat => {
     const name = feat.properties.name;
     if (!name) return;
-
-    // Extensão do segmento em km
     const kmIni = parseFloat(String(feat.properties.km_ini).replace(',','.')) || 0;
     const kmFim = parseFloat(String(feat.properties.km_fim).replace(',','.')) || 0;
     const extKm = Math.abs(kmFim - kmIni);
-
-    // LVC: usar 2025 (fixo)
-    const lvcC = lvcData ? getTrechoConceito(lvcData.data || lvcData, '2025', name) : null;
-    const lvcAno = lvcC ? '2025' : null;
-
-    // IRI: pega o ano mais recente com dados
+    const lvcC = lvcData ? getTrechoConceito(lvcData.data||lvcData,'2025',name) : null;
     let iriC = null, iriAno = null;
-    if (iriData) {
-      for (const ano of ['2025','2024','2023']) {
-        const c = getTrechoConceito(iriData.data || iriData, ano, name);
-        if (c) { iriC = c; iriAno = ano; break; }
-      }
-    }
+    if (iriData) for (const a of ['2025','2024','2023']) { const c=getTrechoConceito(iriData.data||iriData,a,name); if(c){iriC=c;iriAno=a;break;} }
+    const faltam2 = [];
+    if (!lvcC) faltam2.push('LVC');
+    if (!iriC) faltam2.push('IRI');
+    const interv2 = faltam2.length > 0 ? 'SEM DADOS' : (MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS');
+    if (!stats2[interv2]) stats2[interv2]={count:0,ext:0};
+    stats2[interv2].count++; stats2[interv2].ext+=extKm;
+    const color2 = REC_COLORS[interv2] || '#94a3b8';
+    const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
+    const line2 = L.polyline(coords, {color:color2, weight:2, opacity:0.5, dashArray:'6,4', smoothFactor:1});
+    line2.addTo(recLayerGroup);
+  });
 
-    // FWD: pega o ano mais recente com dados
-    let fwdC = null, fwdAno = null;
-    if (fwdData) {
-      for (const ano of ['2025','2024','2023']) {
-        const c = getTrechoConceito(fwdData.data || fwdData, ano, name);
-        if (c) { fwdC = c; fwdAno = ano; break; }
-      }
-    }
-
-    let intervencao, faltam = [];
+  // CAMADA 2: LVC+IRI+FWD (grossa, por cima — apenas onde tem dados FWD)
+  allFeatures.forEach(feat => {
+    const name = feat.properties.name;
+    if (!name) return;
+    const kmIni = parseFloat(String(feat.properties.km_ini).replace(',','.')) || 0;
+    const kmFim = parseFloat(String(feat.properties.km_fim).replace(',','.')) || 0;
+    const extKm = Math.abs(kmFim - kmIni);
+    const lvcC = lvcData ? getTrechoConceito(lvcData.data||lvcData,'2025',name) : null;
+    const lvcAno = lvcC ? '2025' : null;
+    let iriC=null,iriAno=null,fwdC=null,fwdAno=null;
+    if (iriData) for (const a of ['2025','2024','2023']) { const c=getTrechoConceito(iriData.data||iriData,a,name); if(c){iriC=c;iriAno=a;break;} }
+    if (fwdData) for (const a of ['2025','2024','2023']) { const c=getTrechoConceito(fwdData.data||fwdData,a,name); if(c){fwdC=c;fwdAno=a;break;} }
+    const faltam = [];
     if (!lvcC) faltam.push('LVC');
     if (!iriC) faltam.push('IRI');
-
-    if (recTab === 3) {
-      if (!fwdC) faltam.push('FWD');
-      if (faltam.length > 0) {
-        intervencao = 'SEM DADOS';
-      } else {
-        intervencao = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
-      }
-    } else {
-      // Análise LVC + IRI apenas
-      if (faltam.length > 0) {
-        intervencao = 'SEM DADOS';
-      } else {
-        intervencao = MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS';
-      }
-    }
-
-    if (!stats[intervencao]) stats[intervencao] = {count:0, ext:0};
-    stats[intervencao].count++;
-    stats[intervencao].ext += extKm;
+    if (!fwdC) faltam.push('FWD');
+    // Só desenha linha grossa se tiver os 3 módulos
+    if (faltam.length > 0) return;
+    const intervencao = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
+    if (!stats3[intervencao]) stats3[intervencao]={count:0,ext:0};
+    stats3[intervencao].count++; stats3[intervencao].ext+=extKm;
 
     const color = REC_COLORS[intervencao] || '#94a3b8';
     const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
@@ -2611,23 +2641,26 @@ function renderRecuperacao() {
     line.addTo(recLayerGroup);
   });
 
-  // Atualizar estatísticas com extensão
+  // Estatísticas
   const statsEl = document.getElementById('rec-stats');
-  const totalExt = Object.values(stats).reduce((a,v) => a + v.ext, 0);
-  statsEl.innerHTML = Object.entries(stats)
-    .filter(([k,v]) => v.count > 0)
-    .sort((a,b) => b[1].count - a[1].count)
-    .map(([k,v]) => `
-      <div style="margin-bottom:6px;padding:6px 8px;background:${REC_COLORS[k]}15;border-left:3px solid ${REC_COLORS[k]};border-radius:4px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
+  const renderStats = (stats, titulo) => {
+    const total = Object.values(stats).reduce((a,v)=>a+v.ext,0);
+    if (total === 0) return '';
+    return `<div style="font-size:10px;font-weight:700;color:var(--text3);margin:6px 0 3px;">${titulo}</div>` +
+    Object.entries(stats).filter(([k,v])=>v.count>0).sort((a,b)=>b[1].ext-a[1].ext)
+    .map(([k,v])=>`
+      <div style="margin-bottom:4px;padding:5px 8px;background:${REC_COLORS[k]}18;border-left:3px solid ${REC_COLORS[k]};border-radius:4px;">
+        <div style="display:flex;justify-content:space-between;">
           <span style="font-size:10px;font-weight:700;color:${REC_COLORS[k]};">${REC_LABELS[k]}</span>
-          <span style="font-size:11px;font-weight:700;color:${REC_COLORS[k]}">${v.count} seg</span>
+          <span style="font-size:10px;font-weight:700;color:${REC_COLORS[k]}">${v.count} seg</span>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">
-          Extensão: <b style="color:var(--text2)">${v.ext.toFixed(1).replace('.',',')} km</b>
-          <span style="margin-left:6px;opacity:0.6">(${totalExt > 0 ? (v.ext/totalExt*100).toFixed(0) : 0}%)</span>
+        <div style="font-size:10px;color:var(--text3);">
+          ${v.ext.toFixed(1).replace('.',',')} km
+          <span style="opacity:0.6">(${total>0?(v.ext/total*100).toFixed(0):0}%)</span>
         </div>
       </div>`).join('');
+  };
+  statsEl.innerHTML = renderStats(stats3,'📊 LVC + IRI + FWD') + renderStats(stats2,'📊 LVC + IRI');
 }
 
 // ── Aliases mantidos ─────────────────────────────────────────────────────────
@@ -3033,47 +3066,6 @@ function renderLVC() {
       <div class="mob-modal-footer">
         <button class="mob-modal-apply" onclick="closeMobModal()">Aplicar</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Painel Recuperação Funcional -->
-  <div id="rec-panel">
-    <div style="padding:8px 16px 6px;">
-      <div class="sidebar-label" style="margin-bottom:2px">Recuperação Funcional</div>
-      <div style="font-size:11px;color:var(--text3)">Matriz de Intervenção LVC + IRI + FWD</div>
-    </div>
-    <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
-      <div style="font-size:10px;color:var(--text3);line-height:1.6;">
-        <div>📋 <b>LVC:</b> 2025 | <b>IRI/FWD:</b> 2025→2024→2023</div>
-      </div>
-    </div>
-    <!-- Tabs análise -->
-    <div style="display:flex;border-bottom:2px solid var(--border);">
-      <button id="rec-tab-3" onclick="recSetTab(3)"
-        style="flex:1;padding:7px 4px;font-size:11px;font-weight:700;border:none;cursor:pointer;
-               background:#1e7fa0;color:#fff;border-radius:0;">
-        LVC + IRI + FWD
-      </button>
-      <button id="rec-tab-2" onclick="recSetTab(2)"
-        style="flex:1;padding:7px 4px;font-size:11px;font-weight:700;border:none;cursor:pointer;
-               background:var(--surface2);color:var(--text2);border-radius:0;">
-        LVC + IRI
-      </button>
-    </div>
-    <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
-      <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
-      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#22c55e;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Nada a fazer</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#facc15;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reparos Localizados</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#f97316;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Microrrevestimento c/ 2 Camadas</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#ef4444;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reperfilagem + TSD</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#7c3aed;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reciclagem da Base + TSD</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>Dados insuficientes</div>
-      </div>
-    </div>
-    <div style="padding:8px 16px;">
-      <div class="sidebar-label" style="margin-bottom:4px">Resumo por Intervenção</div>
-      <div id="rec-stats" style="font-size:11px;display:flex;flex-direction:column;gap:3px;"></div>
     </div>
   </div>
 
