@@ -971,6 +971,11 @@
         <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
           <div class="sidebar-label" style="margin-bottom:8px">Ano</div>
           <div class="lvc-ano-btns" id="fwd-ano-btns"></div>
+          <button id="fwd-btn-ultima" onclick="fwdSelectUltimaAtualizacao()"
+            class="lvc-ano-btn" style="width:100%;margin-top:4px;justify-content:space-between;">
+            <span style="font-size:14px;">🕐 Última Atualização</span>
+            <span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>
+          </button>
         </div>
         <div id="fwd-resumo-card" class="resumo-card">
           <div class="resumo-card-title">📊 Resumo do levantamento</div>
@@ -2010,6 +2015,8 @@ function fwdSelectAno(ano) {
     b.classList.toggle('active', b.dataset.ano===ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
+  const btnUltimaFwd = document.getElementById('fwd-btn-ultima');
+  if (btnUltimaFwd) { btnUltimaFwd.classList.remove('active'); btnUltimaFwd.querySelector('.btn-label').textContent = 'Clique para visualizar'; }
   renderFWD();
   updateResumoCard('fwd', fwdData.data[fwdCurrentAno] || []);
   const activeNamesFwd = mfGetActiveNames('fwd');
@@ -2018,6 +2025,108 @@ function fwdSelectAno(ano) {
   } else {
     closeDiagram();
   }
+}
+
+function fwdSelectUltimaAtualizacao() {
+  if (!fwdData) return;
+
+  // Desmarcar botões de ano
+  document.querySelectorAll('#fwd-ano-btns .lvc-ano-btn').forEach(b => {
+    b.classList.remove('active');
+    b.querySelector('.btn-label').textContent = 'Clique para visualizar';
+  });
+
+  // Destacar botão
+  const btnUltima = document.getElementById('fwd-btn-ultima');
+  btnUltima.classList.add('active');
+  btnUltima.querySelector('.btn-label').textContent = 'Ativo';
+
+  fwdCurrentAno = null;
+
+  if (!fwdLayerGroup) fwdLayerGroup = L.layerGroup().addTo(map);
+  fwdLayerGroup.clearLayers();
+
+  const anos = ['2025','2024','2023'];
+  const activeNames = mfGetActiveNames('fwd');
+
+  // Identificar ano mais recente por trecho
+  const trechoAno = {};
+  anos.forEach(ano => {
+    (fwdData.data[ano] || []).forEach(f => {
+      const t = f.properties.trecho;
+      if (!trechoAno[t]) trechoAno[t] = ano;
+    });
+  });
+
+  // Mapa de geometrias do roads_data
+  const roadGeo = {};
+  allFeatures.forEach(feat => {
+    if (feat.properties.name) roadGeo[feat.properties.name] = feat;
+  });
+
+  let bom=0, reg=0, ruim=0;
+
+  anos.forEach(ano => {
+    const feats = fwdData.data[ano] || [];
+
+    // Agrupar por trecho para calcular proporções
+    const trechoSegs = {};
+    feats.forEach(f => {
+      const t = f.properties.trecho;
+      if (trechoAno[t] !== ano) return;
+      if (!trechoSegs[t]) trechoSegs[t] = [];
+      trechoSegs[t].push(f);
+    });
+
+    Object.entries(trechoSegs).forEach(([trecho, segs]) => {
+      const roadFeat = roadGeo[trecho];
+      if (!roadFeat) return;
+      if (activeNames) {
+        const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
+        if (!basesAtivos.has(trecho.slice(0,-2))) return;
+      }
+
+      const coords = [...roadFeat.geometry.coordinates].reverse().map(c=>[c[1],c[0]]);
+      let totalLen = 0;
+      const segLens = [];
+      for (let i=0; i<coords.length-1; i++) {
+        const d = haversineM(coords[i][0],coords[i][1],coords[i+1][0],coords[i+1][1]);
+        segLens.push(d); totalLen += d;
+      }
+
+      segs.sort((a,b)=>a.properties.km_ini-b.properties.km_ini);
+      segs.forEach(seg => {
+        const p = seg.properties;
+        const propIni = totalLen > 0 ? p.km_ini / totalLen : 0;
+        const propFim = totalLen > 0 ? p.km_fim / totalLen : 1;
+        const subCoords = extractSubPolyline(coords, totalLen, propIni, propFim);
+        if (subCoords.length < 2) return;
+
+        const color = fwdColor(p.condicao);
+        if (p.condicao==='BOM') bom++;
+        else if (p.condicao==='RUIM') ruim++;
+        else reg++;
+
+        const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
+        line.bindTooltip(
+          `<b>${trecho}</b><br>`+
+          `<span style="font-size:10px;color:#94a3b8">Ano: ${ano}</span><br>`+
+          `km ${(p.km_ini/1000).toFixed(3)} – ${(p.km_fim/1000).toFixed(3)}<br>`+
+          `D0: ${p.d0} µm<br>`+
+          `<span style="color:${color};font-weight:700">${p.condicao}</span>`,
+          {sticky:true}
+        );
+        line.addTo(fwdLayerGroup);
+      });
+    });
+  });
+
+  // Estatísticas
+  const total = bom + reg + ruim;
+  document.getElementById('fwd-stat-total').textContent = total.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-bom').textContent = bom.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-reg').textContent = reg.toLocaleString('pt-BR');
+  document.getElementById('fwd-stat-ruim').textContent = ruim.toLocaleString('pt-BR');
 }
 
 function renderFWD() {
