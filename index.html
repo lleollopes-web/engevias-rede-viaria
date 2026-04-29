@@ -853,9 +853,15 @@
         </button>
       </div>
     </div>
-    <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
-      <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
-      <div id="rec-legend" style="display:flex;flex-direction:column;gap:3px;font-size:11px;"></div>
+    <div style="padding:6px 16px;border-bottom:1px solid var(--border);">
+      <div class="sidebar-label" style="margin-bottom:4px">Legenda</div>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:11px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#22c55e;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Nada a fazer</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#facc15;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reparos Localizados</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#f97316;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Microrrevestimento c/ 2 Camadas</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#ef4444;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reperfilagem + TSD</div>
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#7c3aed;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reciclagem da Base + TSD</div>
+      </div>
     </div>
     <div style="padding:8px 16px;overflow-y:auto;flex:1;">
       <div class="sidebar-label" style="margin-bottom:4px">Resumo por Intervenção</div>
@@ -2569,6 +2575,8 @@ function recSetVis(v) {
 }
 
 function updateRecLegenda() {
+  // Legenda agora é estática — apenas o resumo filtra por análise ativa
+  return;
   const el = document.getElementById('rec-legend');
   if (!el) return;
 
@@ -2759,10 +2767,12 @@ function renderRecuperacao() {
         </span>
       </div>`).join('');
   };
-  statsEl.innerHTML =
-    renderStats(stats3,'🔵 Alta — LVC + IRI + FWD') +
-    renderStats(stats2,'🟡 Média — LVC + IRI') +
-    renderStats(stats1,'🔴 Baixa — Só LVC');
+  let statsHtml = '';
+  if (recVisActive.has(3)) statsHtml += renderStats(stats3,'🔵 Alta — LVC + IRI + FWD');
+  if (recVisActive.has(2)) statsHtml += renderStats(stats2,'🟡 Média — LVC + IRI');
+  if (recVisActive.has(1)) statsHtml += renderStats(stats1,'🔴 Baixa — Só LVC');
+  if (!statsHtml) statsHtml = '<span style="color:var(--text3);font-size:11px;">Nenhuma análise ativa</span>';
+  statsEl.innerHTML = statsHtml;
 }
 
 
