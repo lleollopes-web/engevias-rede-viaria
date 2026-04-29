@@ -281,7 +281,7 @@
   #iri-panel.active { display:flex; }
   #fwd-panel { display:none; flex-direction:column; }
   #fwd-panel.active { display:flex; }
-  #rec-panel { display:none; flex-direction:column; }
+  #rec-panel { display:none; flex-direction:column; max-height:100%; overflow:hidden; }
   #rec-panel.active { display:flex !important; }
   .lvc-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
   .lvc-ano-btn {
@@ -857,7 +857,7 @@
       <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
       <div id="rec-legend" style="display:flex;flex-direction:column;gap:3px;font-size:11px;"></div>
     </div>
-    <div style="padding:8px 16px;">
+    <div style="padding:8px 16px;overflow-y:auto;flex:1;">
       <div class="sidebar-label" style="margin-bottom:4px">Resumo por Intervenção</div>
       <div id="rec-stats" style="font-size:11px;display:flex;flex-direction:column;gap:3px;"></div>
     </div>
@@ -2571,26 +2571,37 @@ function recSetVis(v) {
 function updateRecLegenda() {
   const el = document.getElementById('rec-legend');
   if (!el) return;
-  // Determinar quais intervenções mostrar baseado nas análises ativas
-  const itens = [
-    {color:'#22c55e', label:'Nada a fazer'},
-    {color:'#facc15', label:'Reparos Localizados'},
-    {color:'#f97316', label:'Microrrevestimento c/ 2 Camadas'},
-    {color:'#ef4444', label:'Reperfilagem + TSD'},
-    {color:'#7c3aed', label:'Reciclagem da Base + TSD'},
+
+  if (recVisActive.size === 0) {
+    el.innerHTML = '<span style="color:var(--text3);font-size:11px;">Nenhuma análise ativa</span>';
+    return;
+  }
+
+  // Intervenções possíveis por análise
+  const interv_A1 = new Set(['NADA A FAZER','REPAROS LOCALIZADOS','MICRORREVESTIMENTO','REPERFILAGEM + TSD','RECICLAGEM']);
+  const interv_A2 = new Set(['NADA A FAZER','REPAROS LOCALIZADOS','MICRORREVESTIMENTO','RECICLAGEM','REPERFILAGEM + TSD']);
+  const interv_A3 = new Set(['NADA A FAZER','REPAROS LOCALIZADOS','MICRORREVESTIMENTO','RECICLAGEM']);
+
+  // União das intervenções das análises ativas
+  const ativas = new Set();
+  if (recVisActive.has(3)) interv_A1.forEach(i => ativas.add(i));
+  if (recVisActive.has(2)) interv_A2.forEach(i => ativas.add(i));
+  if (recVisActive.has(1)) interv_A3.forEach(i => ativas.add(i));
+
+  const todos = [
+    {key:'NADA A FAZER',        color:'#22c55e', label:'Nada a fazer'},
+    {key:'REPAROS LOCALIZADOS', color:'#facc15', label:'Reparos Localizados'},
+    {key:'MICRORREVESTIMENTO',  color:'#f97316', label:'Microrrevestimento c/ 2 Camadas'},
+    {key:'REPERFILAGEM + TSD',  color:'#ef4444', label:'Reperfilagem + TSD'},
+    {key:'RECICLAGEM',          color:'#7c3aed', label:'Reciclagem da Base + TSD'},
   ];
-  // Se alguma análise ativa, mostrar legenda — se nenhuma, esconder
-  if (recVisActive.size === 0) { el.innerHTML = '<span style="color:var(--text3);font-size:11px;">Nenhuma análise ativa</span>'; return; }
-  el.innerHTML = itens.map(i =>
+
+  el.innerHTML = todos.filter(i => ativas.has(i.key)).map(i =>
     `<div style="display:flex;align-items:center;gap:6px;">
       <span style="width:20px;height:4px;background:${i.color};border-radius:2px;flex-shrink:0;display:inline-block;"></span>
       ${i.label}
     </div>`
-  ).join('') +
-  `<div style="display:flex;align-items:center;gap:6px;">
-    <span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>
-    Dados insuficientes
-  </div>`;
+  ).join('');
 }
 
 async function loadRecuperacao() {
