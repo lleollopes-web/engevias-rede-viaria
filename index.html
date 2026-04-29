@@ -900,6 +900,15 @@
           <button class="mf-clear-btn" id="iri-mf-clear" onclick="mfSelectAll('iri')">✕ Limpar filtro de rodovias</button>
         </div>
         <div class="lvc-ano-btns" id="iri-ano-btns"></div>
+        <button id="iri-btn-ultima" onclick="iriSelectUltimaAtualizacao()"
+          style="width:100%;margin-top:6px;padding:10px 14px;font-size:13px;font-weight:600;
+                 background:linear-gradient(135deg,#1a3a5c,#1e7fa0);color:#fff;border:none;
+                 border-radius:var(--radius);cursor:pointer;display:flex;justify-content:space-between;
+                 align-items:center;transition:opacity 0.2s;"
+          onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+          <span>🕐 Última Atualização</span>
+          <span style="font-size:11px;opacity:0.7;">2025 → 2024 → 2023</span>
+        </button>
         <div class="lvc-progress" id="iri-progress">
           <div class="lvc-progress-txt" id="iri-progress-txt">Carregando...</div>
           <div class="lvc-progress-bar"><div class="lvc-progress-fill" id="iri-progress-fill"></div></div>
@@ -1458,12 +1467,80 @@ function buildIriAnoBtns() {
   });
 }
 
+function iriSelectUltimaAtualizacao() {
+  if (!iriData) return;
+
+  // Desmarcar botões de ano
+  document.querySelectorAll('#iri-ano-btns .lvc-ano-btn').forEach(b => {
+    b.classList.remove('active');
+    b.querySelector('.btn-label').textContent = 'Clique para visualizar';
+  });
+
+  // Destacar botão "Última Atualização"
+  const btnUltima = document.getElementById('iri-btn-ultima');
+  btnUltima.style.background = 'linear-gradient(135deg,#0f5c3a,#16a34a)';
+
+  // Para cada segmento, usar o ano mais recente disponível
+  if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
+  iriLayerGroup.clearLayers();
+  iriCurrentAno = null; // modo última atualização
+
+  const anos = ['2025','2024','2023'];
+  const activeNamesIri = mfGetActiveNames('iri');
+
+  // Construir mapa: trecho → {ano, dados}
+  const trechoMaisRecente = {};
+  anos.forEach(ano => {
+    const feats = iriData.data[ano] || [];
+    feats.forEach(f => {
+      const t = f.properties.trecho;
+      if (!trechoMaisRecente[t]) trechoMaisRecente[t] = {ano, f};
+    });
+  });
+
+  // Renderizar cada trecho com seu dado mais recente
+  Object.values(trechoMaisRecente).forEach(({ano, f}) => {
+    if (activeNamesIri && !activeNamesIri.has(f.properties.trecho)) return;
+    const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
+    const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
+      {color, weight:3, opacity:0.9, smoothFactor:1});
+    line.bindTooltip(
+      '<b>'+f.properties.trecho+'</b><br>'+
+      '<span style="font-size:10px;color:#94a3b8">Ano: '+ano+'</span><br>'+
+      'IRI: '+f.properties.valor+'<br>'+
+      '<span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',
+      {sticky:true}
+    );
+    line.addTo(iriLayerGroup);
+  });
+
+  // Estatísticas
+  const allFeats = Object.values(trechoMaisRecente).map(v=>v.f);
+  const statsEl = document.getElementById('iri-stat-total');
+  const bomEl = document.getElementById('iri-stat-bom');
+  const regEl = document.getElementById('iri-stat-reg');
+  const ruimEl = document.getElementById('iri-stat-ruim');
+  let bom=0,reg=0,ruim=0;
+  allFeats.forEach(f=>{
+    if(f.properties.condicao==='BOM') bom++;
+    else if(f.properties.condicao==='REGULAR') reg++;
+    else ruim++;
+  });
+  if(statsEl) statsEl.textContent = allFeats.length.toLocaleString('pt-BR');
+  if(bomEl) bomEl.textContent = bom.toLocaleString('pt-BR');
+  if(regEl) regEl.textContent = reg.toLocaleString('pt-BR');
+  if(ruimEl) ruimEl.textContent = ruim.toLocaleString('pt-BR');
+}
+
 function iriSelectAno(ano) {
   iriCurrentAno = ano;
   document.querySelectorAll('#iri-ano-btns .lvc-ano-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.ano===ano);
     b.querySelector('.btn-label').textContent = b.dataset.ano===ano ? 'Ativo' : 'Clique para visualizar';
   });
+  // Resetar botão última atualização
+  const btnUltima = document.getElementById('iri-btn-ultima');
+  if (btnUltima) btnUltima.style.background = 'linear-gradient(135deg,#1a3a5c,#1e7fa0)';
   renderIRI();
   updateResumoCard('iri', iriData.data[iriCurrentAno] || []);
   const activeNamesIri2 = mfGetActiveNames('iri');
