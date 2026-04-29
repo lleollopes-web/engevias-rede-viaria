@@ -1502,33 +1502,36 @@ function iriSelectUltimaAtualizacao() {
   const anos = ['2025','2024','2023'];
   const activeNamesIri = mfGetActiveNames('iri');
 
-  // Normaliza chave do trecho para evitar bugs de maiúsculas/espaços/acentos
+  // Normaliza chave do trecho para evitar bugs de maiúsculas/espaços
   const normTrecho = t => (t || '').trim().toUpperCase();
 
-  // Para cada trecho, identificar qual é o ano mais recente com dados
-  const trechoAno = {}; // chave normalizada -> ano mais recente
-  const trechoOrigKey = {}; // chave normalizada -> valor original do campo trecho
+  // Chave única por sub-segmento: trecho + km_ini + km_fim
+  // Isso garante que segmentos de KMs diferentes não se bloqueiem entre anos
+  const segKey = f => {
+    const p = f.properties;
+    return normTrecho(p.trecho) + '|' + Math.round(p.km_ini) + '|' + Math.round(p.km_fim);
+  };
+
+  // Passar pelos anos do mais recente ao mais antigo,
+  // registrando quais sub-segmentos (por KM) já foram cobertos
+  const segRendered = new Set(); // chaves de sub-segmentos já alocados
+  // coletar quais features serão renderizadas de cada ano
+  const featsParaRenderizar = []; // [{f, ano}]
+
   anos.forEach(ano => {
     (iriData.data[ano] || []).forEach(f => {
-      const raw = f.properties.trecho;
-      const t = normTrecho(raw);
-      if (!trechoAno[t]) {
-        trechoAno[t] = ano; // primeiro ano encontrado (mais recente) = prioritário
-        trechoOrigKey[t] = raw;
-      }
+      if (!f.geometry || !f.geometry.coordinates) return;
+      const k = segKey(f);
+      if (segRendered.has(k)) return; // já coberto por ano mais recente
+      segRendered.add(k);
+      featsParaRenderizar.push({ f, ano });
     });
   });
 
-  // Renderizar TODOS os sub-segmentos do ano mais recente de cada trecho
-  anos.forEach(ano => {
-    const feats = iriData.data[ano] || [];
-    feats.forEach(f => {
+  featsParaRenderizar.forEach(({ f, ano }) => {
       const trecho = f.properties.trecho;
       const trechoNorm = normTrecho(trecho);
-      // Só renderiza se este ano é o mais recente para este trecho
-      if (trechoAno[trechoNorm] !== ano) return;
       if (activeNamesIri && !activeNamesIri.has(trecho) && !activeNamesIri.has(trechoNorm)) return;
-      if (!f.geometry || !f.geometry.coordinates) return;
       const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
       const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
         {color, weight:3, opacity:0.9, smoothFactor:1});
@@ -1565,11 +1568,10 @@ function iriSelectUltimaAtualizacao() {
         document.getElementById('info-panel').classList.add('active');
       });
       line.addTo(iriLayerGroup);
-    });
   });
-  const allFeats = Object.keys(trechoAno).flatMap(tNorm =>
-    (iriData.data[trechoAno[tNorm]] || []).filter(f => normTrecho(f.properties.trecho) === tNorm)
-  );
+
+  // allFeats = todas as features que foram de fato renderizadas
+  const allFeats = featsParaRenderizar.map(({ f }) => f);
 
   // Estatísticas e resumo — baseados no mapa
   const statsElIri = document.getElementById('iri-stat-total');
@@ -1588,10 +1590,11 @@ function iriSelectUltimaAtualizacao() {
   if(ruimElIri) ruimElIri.textContent = ruim.toLocaleString('pt-BR');
 
   // Resumo de levantamento — SREs e extensão do mapa
-  const trechosNoMapa = new Set(allFeats.map(f=>normTrecho(f.properties.trecho)));
+  const normT = t => (t||'').trim().toUpperCase();
+  const trechosNoMapa = new Set(allFeats.map(f=>normT(f.properties.trecho)));
   let extNoMapa = 0;
   trechosNoMapa.forEach(tNorm => {
-    const segsT = allFeats.filter(f=>normTrecho(f.properties.trecho)===tNorm);
+    const segsT = allFeats.filter(f=>normT(f.properties.trecho)===tNorm);
     extNoMapa += Math.max(...segsT.map(f=>f.properties.km_fim)) / 1000;
   });
   document.getElementById('iri-resumo-trechos').textContent = trechosNoMapa.size.toLocaleString('pt-BR');
