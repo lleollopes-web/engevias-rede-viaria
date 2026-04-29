@@ -849,20 +849,13 @@
         <button id="rec-vis-both" onclick="recSetVis(0)"
           style="flex:1;min-width:60px;padding:5px 2px;font-size:9px;font-weight:700;border:2px solid var(--border);
                  background:var(--surface2);color:var(--text2);border-radius:6px;cursor:pointer;">
-          Todas
+          Desmarcar
         </button>
       </div>
     </div>
     <div style="padding:8px 16px;border-bottom:1px solid var(--border);">
       <div class="sidebar-label" style="margin-bottom:6px">Legenda</div>
-      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;">
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#22c55e;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Nada a fazer</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#facc15;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reparos Localizados</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#f97316;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Microrrevestimento c/ 2 Camadas</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#ef4444;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reperfilagem + TSD</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#7c3aed;border-radius:2px;flex-shrink:0;display:inline-block;"></span>Reciclagem da Base + TSD</div>
-        <div style="display:flex;align-items:center;gap:6px;"><span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>Dados insuficientes</div>
-      </div>
+      <div id="rec-legend" style="display:flex;flex-direction:column;gap:3px;font-size:11px;"></div>
     </div>
     <div style="padding:8px 16px;">
       <div class="sidebar-label" style="margin-bottom:4px">Resumo por Intervenção</div>
@@ -2536,30 +2529,68 @@ function getTrechoConceito(data, ano, trecho) {
 
 let recVis = 0; // 0=ambas, 3=só LVC+IRI+FWD, 2=só LVC+IRI
 
+let recVisActive = new Set([3,2,1]); // análises ativas
+
 function recSetVis(v) {
-  recVis = v;
-  const btns = {
-    3: {el: document.getElementById('rec-vis-3'), label: '✓ LVC+IRI+FWD'},
-    2: {el: document.getElementById('rec-vis-2'), label: '✓ LVC+IRI'},
-    1: {el: document.getElementById('rec-vis-1'), label: '✓ Só LVC'},
-    0: {el: document.getElementById('rec-vis-both'), label: '✓ Todas'},
-  };
-  // Reset todos
-  Object.values(btns).forEach(b => {
-    if (!b.el) return;
-    b.el.style.background = 'var(--surface2)';
-    b.el.style.color = 'var(--text2)';
-    b.el.style.borderColor = 'var(--border)';
-  });
-  // Ativar selecionados
-  const ativar = v === 0 ? [3,2,1,0] : [v];
-  ativar.forEach(k => {
-    if (!btns[k] || !btns[k].el) return;
-    btns[k].el.style.background = '#1e7fa0';
-    btns[k].el.style.color = '#fff';
-    btns[k].el.style.borderColor = '#1e7fa0';
-  });
+  const btnIds = {3:'rec-vis-3', 2:'rec-vis-2', 1:'rec-vis-1', 0:'rec-vis-both'};
+
+  if (v === 0) {
+    // Desmarcar todas
+    recVisActive.clear();
+    recVis = -1;
+    Object.entries(btnIds).forEach(([k,id]) => {
+      const b = document.getElementById(id);
+      if (!b) return;
+      b.style.background = 'var(--surface2)';
+      b.style.color = 'var(--text2)';
+      b.style.borderColor = 'var(--border)';
+    });
+  } else {
+    // Toggle da análise clicada
+    if (recVisActive.has(v)) {
+      recVisActive.delete(v);
+    } else {
+      recVisActive.add(v);
+    }
+    // Atualizar visual dos botões
+    [3,2,1].forEach(k => {
+      const b = document.getElementById(btnIds[k]);
+      if (!b) return;
+      if (recVisActive.has(k)) {
+        b.style.background = '#1e7fa0'; b.style.color = '#fff'; b.style.borderColor = '#1e7fa0';
+      } else {
+        b.style.background = 'var(--surface2)'; b.style.color = 'var(--text2)'; b.style.borderColor = 'var(--border)';
+      }
+    });
+    recVis = recVisActive.size === 3 ? 0 : (recVisActive.size === 1 ? [...recVisActive][0] : 99);
+  }
+  updateRecLegenda();
   renderRecuperacao();
+}
+
+function updateRecLegenda() {
+  const el = document.getElementById('rec-legend');
+  if (!el) return;
+  // Determinar quais intervenções mostrar baseado nas análises ativas
+  const itens = [
+    {color:'#22c55e', label:'Nada a fazer'},
+    {color:'#facc15', label:'Reparos Localizados'},
+    {color:'#f97316', label:'Microrrevestimento c/ 2 Camadas'},
+    {color:'#ef4444', label:'Reperfilagem + TSD'},
+    {color:'#7c3aed', label:'Reciclagem da Base + TSD'},
+  ];
+  // Se alguma análise ativa, mostrar legenda — se nenhuma, esconder
+  if (recVisActive.size === 0) { el.innerHTML = '<span style="color:var(--text3);font-size:11px;">Nenhuma análise ativa</span>'; return; }
+  el.innerHTML = itens.map(i =>
+    `<div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:20px;height:4px;background:${i.color};border-radius:2px;flex-shrink:0;display:inline-block;"></span>
+      ${i.label}
+    </div>`
+  ).join('') +
+  `<div style="display:flex;align-items:center;gap:6px;">
+    <span style="width:20px;height:4px;background:#94a3b8;border-radius:2px;flex-shrink:0;display:inline-block;border:1px dashed #64748b;"></span>
+    Dados insuficientes
+  </div>`;
 }
 
 async function loadRecuperacao() {
@@ -2650,7 +2681,7 @@ function renderRecuperacao() {
       const interv = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
       if (!stats3[interv]) stats3[interv]={count:0,ext:0};
       stats3[interv].count++; stats3[interv].ext+=extKm;
-      if (recVis===0 || recVis===3) {
+      if (recVisActive.has(3)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.95,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
@@ -2668,7 +2699,7 @@ function renderRecuperacao() {
       const interv = MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS';
       if (!stats2[interv]) stats2[interv]={count:0,ext:0};
       stats2[interv].count++; stats2[interv].ext+=extKm;
-      if (recVis===0 || recVis===2) {
+      if (recVisActive.has(2)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.85,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
@@ -2686,7 +2717,7 @@ function renderRecuperacao() {
       const interv = MATRIZ_SO_LVC[lvcC] || 'SEM DADOS';
       if (!stats1[interv]) stats1[interv]={count:0,ext:0};
       stats1[interv].count++; stats1[interv].ext+=extKm;
-      if (recVis===0 || recVis===1) {
+      if (recVisActive.has(1)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.7,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
