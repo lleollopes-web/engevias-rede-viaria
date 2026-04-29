@@ -2706,18 +2706,15 @@ function renderRecuperacao() {
   const renderStats = (stats, titulo) => {
     const total = Object.values(stats).reduce((a,v)=>a+v.ext,0);
     if (total===0) return '';
-    return `<div style="font-size:10px;font-weight:700;color:var(--text3);margin:6px 0 3px;">${titulo}</div>`+
+    return `<div style="font-size:11px;font-weight:700;color:var(--text3);margin:8px 0 4px;">${titulo}</div>`+
     Object.entries(stats).filter(([k,v])=>v.count>0).sort((a,b)=>b[1].ext-a[1].ext)
     .map(([k,v])=>`
-      <div style="margin-bottom:4px;padding:5px 8px;background:${REC_COLORS[k]}18;border-left:3px solid ${REC_COLORS[k]};border-radius:4px;">
-        <div style="display:flex;justify-content:space-between;">
-          <span style="font-size:10px;font-weight:700;color:${REC_COLORS[k]};">${REC_LABELS[k]}</span>
-          <span style="font-size:10px;font-weight:700;color:${REC_COLORS[k]}">${v.count} seg</span>
-        </div>
-        <div style="font-size:10px;color:var(--text3);">
+      <div style="margin-bottom:4px;padding:6px 10px;background:${REC_COLORS[k]}18;border-left:3px solid ${REC_COLORS[k]};border-radius:4px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:12px;font-weight:700;color:${REC_COLORS[k]};">${REC_LABELS[k]}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;margin-left:6px;">
           ${v.ext.toFixed(1).replace('.',',')} km
-          <span style="opacity:0.6">(${total>0?(v.ext/total*100).toFixed(0):0}%)</span>
-        </div>
+          <span style="font-size:11px;color:var(--text3);font-weight:500;">(${total>0?(v.ext/total*100).toFixed(0):0}%)</span>
+        </span>
       </div>`).join('');
   };
   statsEl.innerHTML =
