@@ -2547,8 +2547,8 @@ function recSetVis(v) {
 
 async function loadRecuperacao() {
   // Mostrar loading
-  const statsEl = document.getElementById('rec-stats');
-  if (statsEl) statsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">⏳ Carregando dados...</div>';
+  const statsElLoad = document.getElementById('rec-stats');
+  if (statsElLoad) statsElLoad.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:4px 0;">⏳ Carregando LVC, IRI e FWD...</div>';
 
   // Garantir que LVC, IRI e FWD estão carregados
   const promises = [];
@@ -2568,10 +2568,26 @@ async function loadRecuperacao() {
     }).catch(e=>console.error('LVC erro:',e))
   );
   if (!iriData) promises.push(
-    fetch('/iri').then(r=>r.json()).then(d=>{iriData=d;}).catch(e=>console.error('IRI erro:',e))
+    fetch('/iri').then(r=>r.json()).then(d=>{
+      if (d.data) {
+        const norm = {};
+        Object.keys(d.data).forEach(k => { const key = k.length===3?'2'+k:k; norm[key]=d.data[k]; });
+        d.data = norm;
+        d.anos = d.anos ? d.anos.map(a=>a.length===3?'2'+a:a) : Object.keys(norm);
+      }
+      iriData = d;
+    }).catch(e=>console.error('IRI erro:',e))
   );
   if (!fwdData) promises.push(
-    fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=d;}).catch(e=>console.error('FWD erro:',e))
+    fetch('/fwd').then(r=>r.json()).then(d=>{
+      if (d.data) {
+        const norm = {};
+        Object.keys(d.data).forEach(k => { const key = k.length===3?'2'+k:k; norm[key]=d.data[k]; });
+        d.data = norm;
+        d.anos = d.anos ? d.anos.map(a=>a.length===3?'2'+a:a) : Object.keys(norm);
+      }
+      fwdData = d;
+    }).catch(e=>console.error('FWD erro:',e))
   );
 
   await Promise.all(promises);
@@ -2679,7 +2695,7 @@ function renderRecuperacao() {
     line3.addTo(recLayerGroup);
   });
 
-  // Estatísticas
+  // Remover loading
   const statsEl = document.getElementById('rec-stats');
   const renderStats = (stats, titulo) => {
     const total = Object.values(stats).reduce((a,v)=>a+v.ext,0);
