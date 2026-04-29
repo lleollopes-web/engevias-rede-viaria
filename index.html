@@ -901,13 +901,9 @@
         </div>
         <div class="lvc-ano-btns" id="iri-ano-btns"></div>
         <button id="iri-btn-ultima" onclick="iriSelectUltimaAtualizacao()"
-          style="width:100%;margin-top:6px;padding:10px 14px;font-size:13px;font-weight:600;
-                 background:linear-gradient(135deg,#1a3a5c,#1e7fa0);color:#fff;border:none;
-                 border-radius:var(--radius);cursor:pointer;display:flex;justify-content:space-between;
-                 align-items:center;transition:opacity 0.2s;"
-          onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
-          <span>🕐 Última Atualização</span>
-          <span style="font-size:11px;opacity:0.7;">2025 → 2024 → 2023</span>
+          class="lvc-ano-btn" style="width:100%;margin-top:4px;justify-content:space-between;">
+          <span style="font-size:14px;">🕐 Última Atualização</span>
+          <span class="btn-label" style="white-space:nowrap">Clique para visualizar</span>
         </button>
         <div class="lvc-progress" id="iri-progress">
           <div class="lvc-progress-txt" id="iri-progress-txt">Carregando...</div>
@@ -1478,7 +1474,8 @@ function iriSelectUltimaAtualizacao() {
 
   // Destacar botão "Última Atualização"
   const btnUltima = document.getElementById('iri-btn-ultima');
-  btnUltima.style.background = 'linear-gradient(135deg,#0f5c3a,#16a34a)';
+  btnUltima.classList.add('active');
+  btnUltima.querySelector('.btn-label').textContent = 'Ativo';
 
   // Para cada segmento, usar o ano mais recente disponível
   if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
@@ -1488,43 +1485,42 @@ function iriSelectUltimaAtualizacao() {
   const anos = ['2025','2024','2023'];
   const activeNamesIri = mfGetActiveNames('iri');
 
-  // Construir mapa: trecho → {ano, dados}
-  const trechoMaisRecente = {};
+  // Para cada trecho, identificar qual é o ano mais recente com dados
+  const trechoAno = {};
   anos.forEach(ano => {
-    const feats = iriData.data[ano] || [];
-    feats.forEach(f => {
+    (iriData.data[ano] || []).forEach(f => {
       const t = f.properties.trecho;
-      if (!trechoMaisRecente[t]) trechoMaisRecente[t] = {ano, f};
+      if (!trechoAno[t]) trechoAno[t] = ano; // primeiro ano encontrado = mais recente
     });
   });
 
-  // Construir mapa de geometrias a partir do roads_data
-  const roadGeo = {};
-  allFeatures.forEach(feat => {
-    if (feat.properties.name) roadGeo[feat.properties.name] = feat.geometry.coordinates;
+  // Renderizar TODOS os sub-segmentos do ano mais recente de cada trecho
+  anos.forEach(ano => {
+    const feats = iriData.data[ano] || [];
+    feats.forEach(f => {
+      const trecho = f.properties.trecho;
+      // Só renderiza se este ano é o mais recente para este trecho
+      if (trechoAno[trecho] !== ano) return;
+      if (activeNamesIri && !activeNamesIri.has(trecho)) return;
+      if (!f.geometry || !f.geometry.coordinates) return;
+      const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
+      const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
+        {color, weight:3, opacity:0.9, smoothFactor:1});
+      line.bindTooltip(
+        '<b>'+trecho+'</b><br>'+
+        '<span style="font-size:10px;color:#94a3b8">Ano: '+ano+'</span><br>'+
+        'IRI: '+f.properties.valor+'<br>'+
+        '<span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',
+        {sticky:true}
+      );
+      line.addTo(iriLayerGroup);
+    });
   });
-
-  // Renderizar cada trecho com seu dado mais recente
-  Object.values(trechoMaisRecente).forEach(({ano, f}) => {
-    const trecho = f.properties.trecho;
-    if (activeNamesIri && !activeNamesIri.has(trecho)) return;
-    const coords = roadGeo[trecho];
-    if (!coords) return; // sem geometria
-    const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
-    const line = L.polyline(coords.map(c=>[c[1],c[0]]),
-      {color, weight:3, opacity:0.9, smoothFactor:1});
-    line.bindTooltip(
-      '<b>'+trecho+'</b><br>'+
-      '<span style="font-size:10px;color:#94a3b8">Ano: '+ano+'</span><br>'+
-      'IRI: '+f.properties.valor+'<br>'+
-      '<span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',
-      {sticky:true}
-    );
-    line.addTo(iriLayerGroup);
-  });
+  const allFeats = Object.keys(trechoAno).flatMap(t =>
+    (iriData.data[trechoAno[t]] || []).filter(f => f.properties.trecho === t)
+  );
 
   // Estatísticas
-  const allFeats = Object.values(trechoMaisRecente).map(v=>v.f);
   const statsEl = document.getElementById('iri-stat-total');
   const bomEl = document.getElementById('iri-stat-bom');
   const regEl = document.getElementById('iri-stat-reg');
@@ -1549,7 +1545,7 @@ function iriSelectAno(ano) {
   });
   // Resetar botão última atualização
   const btnUltima = document.getElementById('iri-btn-ultima');
-  if (btnUltima) btnUltima.style.background = 'linear-gradient(135deg,#1a3a5c,#1e7fa0)';
+  if (btnUltima) { btnUltima.classList.remove('active'); btnUltima.querySelector('.btn-label').textContent = 'Clique para visualizar'; }
   renderIRI();
   updateResumoCard('iri', iriData.data[iriCurrentAno] || []);
   const activeNamesIri2 = mfGetActiveNames('iri');
