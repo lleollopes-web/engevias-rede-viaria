@@ -732,6 +732,7 @@
           <option value="iri">Condição do IRI</option>
           <option value="fwd">Condição do FWD</option>
           <option value="recfuncional">Recuperação Funcional</option>
+          <option value="obras">Obras Rodoviárias</option>
         </select>
       </div>
 
@@ -3042,6 +3043,11 @@ function setModo(modo) {
     loadFWD();
     return;
   }
+  if (modo === 'obras') {
+    openDevModal('Obras Rodoviárias');
+    return;
+  }
+
   if (modo === 'recfuncional') {
     document.getElementById('rec-panel').classList.add('active');
     document.getElementById('map-watermark').classList.add('active');
