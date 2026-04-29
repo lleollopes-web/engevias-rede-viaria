@@ -1511,13 +1511,38 @@ function iriSelectUltimaAtualizacao() {
       const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
       const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
         {color, weight:3, opacity:0.9, smoothFactor:1});
-      line.bindTooltip(
-        '<b>'+trecho+'</b><br>'+
-        '<span style="font-size:10px;color:#94a3b8">Ano: '+ano+'</span><br>'+
-        'IRI: '+f.properties.valor+'<br>'+
-        '<span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',
-        {sticky:true}
-      );
+      line.bindTooltip('<b>'+trecho+'</b> — '+f.properties.condicao+' | IRI: '+f.properties.valor, {sticky:true});
+      line.on('click', () => {
+        const p = f.properties;
+        document.getElementById('info-title').textContent = trecho;
+        document.getElementById('info-id').textContent = trecho;
+        document.getElementById('info-content').innerHTML = `
+          <div style="padding:8px 0;">
+            <div style="background:${color}22;border-left:4px solid ${color};padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+              <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">CONDIÇÃO DO IRI</div>
+              <div style="font-size:16px;font-weight:700;color:${color};">${p.condicao}</div>
+            </div>
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 4px;color:var(--text3);">Ano dos dados</td>
+                <td style="padding:6px 4px;font-weight:600;text-align:right;">${ano}</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 4px;color:var(--text3);">Valor IRI</td>
+                <td style="padding:6px 4px;font-weight:600;text-align:right;">${p.valor} m/km</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 4px;color:var(--text3);">KM Início</td>
+                <td style="padding:6px 4px;font-weight:600;text-align:right;">${(p.km_ini/1000).toFixed(3)} km</td>
+              </tr>
+              <tr>
+                <td style="padding:6px 4px;color:var(--text3);">KM Fim</td>
+                <td style="padding:6px 4px;font-weight:600;text-align:right;">${(p.km_fim/1000).toFixed(3)} km</td>
+              </tr>
+            </table>
+          </div>`;
+        document.getElementById('info-panel').classList.add('active');
+      });
       line.addTo(iriLayerGroup);
     });
   });
@@ -1525,21 +1550,32 @@ function iriSelectUltimaAtualizacao() {
     (iriData.data[trechoAno[t]] || []).filter(f => f.properties.trecho === t)
   );
 
-  // Estatísticas
-  const statsEl = document.getElementById('iri-stat-total');
-  const bomEl = document.getElementById('iri-stat-bom');
-  const regEl = document.getElementById('iri-stat-reg');
-  const ruimEl = document.getElementById('iri-stat-ruim');
+  // Estatísticas e resumo — baseados no mapa
+  const statsElIri = document.getElementById('iri-stat-total');
+  const bomElIri = document.getElementById('iri-stat-bom');
+  const regElIri = document.getElementById('iri-stat-reg');
+  const ruimElIri = document.getElementById('iri-stat-ruim');
   let bom=0,reg=0,ruim=0;
   allFeats.forEach(f=>{
     if(f.properties.condicao==='BOM') bom++;
     else if(f.properties.condicao==='REGULAR') reg++;
     else ruim++;
   });
-  if(statsEl) statsEl.textContent = allFeats.length.toLocaleString('pt-BR');
-  if(bomEl) bomEl.textContent = bom.toLocaleString('pt-BR');
-  if(regEl) regEl.textContent = reg.toLocaleString('pt-BR');
-  if(ruimEl) ruimEl.textContent = ruim.toLocaleString('pt-BR');
+  if(statsElIri) statsElIri.textContent = allFeats.length.toLocaleString('pt-BR');
+  if(bomElIri) bomElIri.textContent = bom.toLocaleString('pt-BR');
+  if(regElIri) regElIri.textContent = reg.toLocaleString('pt-BR');
+  if(ruimElIri) ruimElIri.textContent = ruim.toLocaleString('pt-BR');
+
+  // Resumo de levantamento — SREs e extensão do mapa
+  const trechosNoMapa = new Set(allFeats.map(f=>f.properties.trecho));
+  let extNoMapa = 0;
+  trechosNoMapa.forEach(t => {
+    const segsT = allFeats.filter(f=>f.properties.trecho===t);
+    extNoMapa += Math.max(...segsT.map(f=>f.properties.km_fim)) / 1000;
+  });
+  document.getElementById('iri-resumo-trechos').textContent = trechosNoMapa.size.toLocaleString('pt-BR');
+  document.getElementById('iri-resumo-ext').textContent = extNoMapa.toFixed(1).replace('.',',');
+  document.getElementById('iri-resumo-card').classList.add('active');
 }
 
 function iriSelectAno(ano) {
@@ -2108,14 +2144,37 @@ function fwdSelectUltimaAtualizacao() {
         else reg++;
 
         const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
-        line.bindTooltip(
-          `<b>${trecho}</b><br>`+
-          `<span style="font-size:10px;color:#94a3b8">Ano: ${ano}</span><br>`+
-          `km ${(p.km_ini/1000).toFixed(3)} – ${(p.km_fim/1000).toFixed(3)}<br>`+
-          `D0: ${p.d0} µm<br>`+
-          `<span style="color:${color};font-weight:700">${p.condicao}</span>`,
-          {sticky:true}
-        );
+        line.bindTooltip(`<b>${trecho}</b> — ${p.condicao} | D0: ${p.d0} µm`, {sticky:true});
+        line.on('click', () => {
+          document.getElementById('info-title').textContent = trecho;
+          document.getElementById('info-id').textContent = trecho;
+          document.getElementById('info-content').innerHTML = `
+            <div style="padding:8px 0;">
+              <div style="background:${color}22;border-left:4px solid ${color};padding:10px 12px;border-radius:6px;margin-bottom:10px;">
+                <div style="font-size:11px;color:var(--text3);margin-bottom:2px;">CONDIÇÃO DO FWD</div>
+                <div style="font-size:16px;font-weight:700;color:${color};">${p.condicao}</div>
+              </div>
+              <table style="width:100%;font-size:12px;border-collapse:collapse;">
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:6px 4px;color:var(--text3);">Ano dos dados</td>
+                  <td style="padding:6px 4px;font-weight:600;text-align:right;">${ano}</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:6px 4px;color:var(--text3);">D0 (deflexão)</td>
+                  <td style="padding:6px 4px;font-weight:600;text-align:right;">${p.d0} µm</td>
+                </tr>
+                <tr style="border-bottom:1px solid var(--border);">
+                  <td style="padding:6px 4px;color:var(--text3);">KM Início</td>
+                  <td style="padding:6px 4px;font-weight:600;text-align:right;">${(p.km_ini/1000).toFixed(3)} km</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 4px;color:var(--text3);">KM Fim</td>
+                  <td style="padding:6px 4px;font-weight:600;text-align:right;">${(p.km_fim/1000).toFixed(3)} km</td>
+                </tr>
+              </table>
+            </div>`;
+          document.getElementById('info-panel').classList.add('active');
+        });
         line.addTo(fwdLayerGroup);
       });
     });
@@ -2127,6 +2186,18 @@ function fwdSelectUltimaAtualizacao() {
   document.getElementById('fwd-stat-bom').textContent = bom.toLocaleString('pt-BR');
   document.getElementById('fwd-stat-reg').textContent = reg.toLocaleString('pt-BR');
   document.getElementById('fwd-stat-ruim').textContent = ruim.toLocaleString('pt-BR');
+
+  // Resumo — SREs e extensão condizentes com o mapa
+  const trechosFwd = Object.keys(trechoAno);
+  let extFwd = 0;
+  trechosFwd.forEach(t => {
+    const ano = trechoAno[t];
+    const segsT = (fwdData.data[ano]||[]).filter(f=>f.properties.trecho===t);
+    if (segsT.length) extFwd += Math.max(...segsT.map(f=>f.properties.km_fim)) / 1000;
+  });
+  document.getElementById('fwd-resumo-trechos').textContent = trechosFwd.length.toLocaleString('pt-BR');
+  document.getElementById('fwd-resumo-ext').textContent = extFwd.toFixed(1).replace('.',',');
+  document.getElementById('fwd-resumo-card').classList.add('active');
 }
 
 function renderFWD() {
