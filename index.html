@@ -1448,10 +1448,22 @@ let iriLayerGroup = null;
 let iriCurrentAno = null;
 const IRI_COLORS = { 'BOM':'#16a34a', 'REGULAR':'#eab308', 'RUIM':'#f97316' };
 
+function normalizarAnos(d) {
+  if (!d || !d.data) return d;
+  const norm = {};
+  Object.keys(d.data).forEach(k => {
+    const key = k.length === 3 ? '2' + k : k;
+    norm[key] = d.data[k];
+  });
+  d.data = norm;
+  d.anos = d.anos ? d.anos.map(a => a.length === 3 ? '2' + a : a) : Object.keys(norm);
+  return d;
+}
+
 async function loadIRI() {
   if (iriData) { buildIriAnoBtns(); return; }
   const res = await fetch('/iri');
-  iriData = await res.json();
+  iriData = normalizarAnos(await res.json());
   buildIriAnoBtns();
 }
 
@@ -2882,43 +2894,9 @@ async function loadRecuperacao() {
 
   // Garantir que LVC, IRI e FWD estão carregados
   const promises = [];
-  if (!lvcData) promises.push(
-    fetch('/lvc').then(r=>r.json()).then(d=>{
-      // Normalizar chaves de ano (ex: '025' → '2025')
-      if (d.data) {
-        const normalized = {};
-        Object.keys(d.data).forEach(k => {
-          const key = k.length === 3 ? '2' + k : k;
-          normalized[key] = d.data[k];
-        });
-        d.data = normalized;
-        d.anos = d.anos ? d.anos.map(a => a.length === 3 ? '2' + a : a) : Object.keys(normalized);
-      }
-      lvcData = d;
-    }).catch(e=>console.error('LVC erro:',e))
-  );
-  if (!iriData) promises.push(
-    fetch('/iri').then(r=>r.json()).then(d=>{
-      if (d.data) {
-        const norm = {};
-        Object.keys(d.data).forEach(k => { const key = k.length===3?'2'+k:k; norm[key]=d.data[k]; });
-        d.data = norm;
-        d.anos = d.anos ? d.anos.map(a=>a.length===3?'2'+a:a) : Object.keys(norm);
-      }
-      iriData = d;
-    }).catch(e=>console.error('IRI erro:',e))
-  );
-  if (!fwdData) promises.push(
-    fetch('/fwd').then(r=>r.json()).then(d=>{
-      if (d.data) {
-        const norm = {};
-        Object.keys(d.data).forEach(k => { const key = k.length===3?'2'+k:k; norm[key]=d.data[k]; });
-        d.data = norm;
-        d.anos = d.anos ? d.anos.map(a=>a.length===3?'2'+a:a) : Object.keys(norm);
-      }
-      fwdData = d;
-    }).catch(e=>console.error('FWD erro:',e))
-  );
+  if (!lvcData) promises.push(fetch('/lvc').then(r=>r.json()).then(d=>{lvcData=normalizarAnos(d);}).catch(e=>console.error('LVC erro:',e)));
+  if (!iriData) promises.push(fetch('/iri').then(r=>r.json()).then(d=>{iriData=normalizarAnos(d);}).catch(e=>console.error('IRI erro:',e)));
+  if (!fwdData) promises.push(fetch('/fwd').then(r=>r.json()).then(d=>{fwdData=normalizarAnos(d);}).catch(e=>console.error('FWD erro:',e)));
 
   await Promise.all(promises);
 
@@ -3232,7 +3210,7 @@ async function loadLVC() {
     return;
   }
   const res = await fetch('/lvc');
-  lvcData = await res.json();
+  lvcData = normalizarAnos(await res.json());
   buildAnoBtns();
 }
 
