@@ -1498,14 +1498,23 @@ function iriSelectUltimaAtualizacao() {
     });
   });
 
+  // Construir mapa de geometrias a partir do roads_data
+  const roadGeo = {};
+  allFeatures.forEach(feat => {
+    if (feat.properties.name) roadGeo[feat.properties.name] = feat.geometry.coordinates;
+  });
+
   // Renderizar cada trecho com seu dado mais recente
   Object.values(trechoMaisRecente).forEach(({ano, f}) => {
-    if (activeNamesIri && !activeNamesIri.has(f.properties.trecho)) return;
+    const trecho = f.properties.trecho;
+    if (activeNamesIri && !activeNamesIri.has(trecho)) return;
+    const coords = roadGeo[trecho];
+    if (!coords) return; // sem geometria
     const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
-    const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
+    const line = L.polyline(coords.map(c=>[c[1],c[0]]),
       {color, weight:3, opacity:0.9, smoothFactor:1});
     line.bindTooltip(
-      '<b>'+f.properties.trecho+'</b><br>'+
+      '<b>'+trecho+'</b><br>'+
       '<span style="font-size:10px;color:#94a3b8">Ano: '+ano+'</span><br>'+
       'IRI: '+f.properties.valor+'<br>'+
       '<span style="color:'+color+';font-weight:700">'+f.properties.condicao+'</span>',
