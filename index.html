@@ -1502,12 +1502,20 @@ function iriSelectUltimaAtualizacao() {
   const anos = ['2025','2024','2023'];
   const activeNamesIri = mfGetActiveNames('iri');
 
+  // Normaliza chave do trecho para evitar bugs de maiúsculas/espaços/acentos
+  const normTrecho = t => (t || '').trim().toUpperCase();
+
   // Para cada trecho, identificar qual é o ano mais recente com dados
-  const trechoAno = {};
+  const trechoAno = {}; // chave normalizada -> ano mais recente
+  const trechoOrigKey = {}; // chave normalizada -> valor original do campo trecho
   anos.forEach(ano => {
     (iriData.data[ano] || []).forEach(f => {
-      const t = f.properties.trecho;
-      if (!trechoAno[t]) trechoAno[t] = ano; // primeiro ano encontrado = mais recente
+      const raw = f.properties.trecho;
+      const t = normTrecho(raw);
+      if (!trechoAno[t]) {
+        trechoAno[t] = ano; // primeiro ano encontrado (mais recente) = prioritário
+        trechoOrigKey[t] = raw;
+      }
     });
   });
 
@@ -1516,9 +1524,10 @@ function iriSelectUltimaAtualizacao() {
     const feats = iriData.data[ano] || [];
     feats.forEach(f => {
       const trecho = f.properties.trecho;
+      const trechoNorm = normTrecho(trecho);
       // Só renderiza se este ano é o mais recente para este trecho
-      if (trechoAno[trecho] !== ano) return;
-      if (activeNamesIri && !activeNamesIri.has(trecho)) return;
+      if (trechoAno[trechoNorm] !== ano) return;
+      if (activeNamesIri && !activeNamesIri.has(trecho) && !activeNamesIri.has(trechoNorm)) return;
       if (!f.geometry || !f.geometry.coordinates) return;
       const color = IRI_COLORS[f.properties.condicao] || '#94a3b8';
       const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
@@ -1558,8 +1567,8 @@ function iriSelectUltimaAtualizacao() {
       line.addTo(iriLayerGroup);
     });
   });
-  const allFeats = Object.keys(trechoAno).flatMap(t =>
-    (iriData.data[trechoAno[t]] || []).filter(f => f.properties.trecho === t)
+  const allFeats = Object.keys(trechoAno).flatMap(tNorm =>
+    (iriData.data[trechoAno[tNorm]] || []).filter(f => normTrecho(f.properties.trecho) === tNorm)
   );
 
   // Estatísticas e resumo — baseados no mapa
@@ -1579,10 +1588,10 @@ function iriSelectUltimaAtualizacao() {
   if(ruimElIri) ruimElIri.textContent = ruim.toLocaleString('pt-BR');
 
   // Resumo de levantamento — SREs e extensão do mapa
-  const trechosNoMapa = new Set(allFeats.map(f=>f.properties.trecho));
+  const trechosNoMapa = new Set(allFeats.map(f=>normTrecho(f.properties.trecho)));
   let extNoMapa = 0;
-  trechosNoMapa.forEach(t => {
-    const segsT = allFeats.filter(f=>f.properties.trecho===t);
+  trechosNoMapa.forEach(tNorm => {
+    const segsT = allFeats.filter(f=>normTrecho(f.properties.trecho)===tNorm);
     extNoMapa += Math.max(...segsT.map(f=>f.properties.km_fim)) / 1000;
   });
   document.getElementById('iri-resumo-trechos').textContent = trechosNoMapa.size.toLocaleString('pt-BR');
