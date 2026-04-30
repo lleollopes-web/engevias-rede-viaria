@@ -292,6 +292,8 @@
   }
   .lvc-ano-btn:hover { border-color:var(--teal); color:var(--teal); background:#f0f8fb; }
   .lvc-ano-btn.active { border-color:var(--teal); background:var(--teal); color:#fff; }
+  .lvc-ano-btn.active .btn-label { color:rgba(255,255,255,0.85); }
+  .obras-toggle-hint { font-size:10px; color:var(--text3); padding:0 16px 10px; font-style:italic; }
   .lvc-ano-btn .btn-label { font-size:11px; font-weight:500; opacity:0.75; }
   .lvc-progress { padding:16px; border-bottom:1px solid var(--border); display:none; }
   .lvc-progress-bar { height:6px; background:var(--border); border-radius:6px; overflow:hidden; margin-top:8px; }
@@ -1151,6 +1153,7 @@
           <button onclick="obrasRecarregar()" title="Recarregar planilha do GitHub" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">🔄</button>
         </div>
         <div id="obras-load-status" style="display:none;padding:10px 16px;font-size:12px;color:#dc2626;background:#fef2f2;border-bottom:1px solid #fecaca;"></div>
+        <div class="obras-toggle-hint">Clique para ativar/desativar cada ano</div>
         <div class="obras-ano-btns" id="obras-ano-btns"></div>
         <div class="obras-stats-bar" id="obras-stats-bar" style="display:none;">
           <div class="obras-stat-chip"><strong id="obras-stat-total">—</strong> obras</div>
@@ -1177,6 +1180,10 @@
               <rect x="8" y="36" width="4" height="10" rx="1" fill="#E0B000"/>
             </svg>
             Obra pontual
+          </div>
+          <div class="obras-legend-item" style="margin-top:4px;">
+            <div class="obras-legend-dot" style="background:#94a3b8;opacity:0.6;"></div>
+            Sem obra vinculada
           </div>
         </div>
       </div>
@@ -1747,6 +1754,26 @@ function iriSelectAno(ano) {
   }
 }
 
+
+// ── Camada cinza base: todos os segmentos sem dado no modo atual ──
+function _drawGrayBase(layerGroup, sresComDado) {
+  // sresComDado: Set com os names/ids que já têm dado e serão coloridos
+  allFeatures.forEach(f => {
+    const name = f.properties.name || f.properties.id;
+    if (sresComDado && sresComDado.has(name)) return; // vai ser colorido
+    if (!f.geometry) return;
+    const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
+    const isFederal = (f.properties.jurisdicao || '').includes('FEDERAL');
+    L.polyline(coords, {
+      color: '#b0b8c4',
+      weight: isFederal ? 3 : 1.5,
+      opacity: 0.45,
+      smoothFactor: 1,
+      interactive: false,
+    }).addTo(layerGroup);
+  });
+}
+
 function renderIRI() {
   if (!iriData || !iriCurrentAno) return;
   if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
@@ -1758,6 +1785,9 @@ function renderIRI() {
   const activeNamesIri = mfGetActiveNames('iri');
   let features = iriData.data[iriCurrentAno] || [];
   if (activeNamesIri) features = features.filter(f=>activeNamesIri.has(f.properties.trecho));
+  // Cinza base: segmentos sem dado IRI
+  const sresIRI = new Set(features.map(f => f.properties.trecho));
+  _drawGrayBase(iriLayerGroup, sresIRI);
   const total = features.length; let done=0;
   function batch(start) {
     const end = Math.min(start+500, total);
@@ -1793,6 +1823,8 @@ function renderIRIFiltered() {
   let features = iriData.data[iriCurrentAno] || [];
   const activeNames = mfGetActiveNames('iri');
   if (activeNames) features = features.filter(f=>activeNames.has(f.properties.trecho));
+  const sresIRIF = new Set(features.map(f => f.properties.trecho));
+  _drawGrayBase(iriLayerGroup, sresIRIF);
   features.forEach(f=>{
     const color=IRI_COLORS[f.properties.condicao]||'#94a3b8';
     const line=L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:4,opacity:0.95,smoothFactor:1});
@@ -2413,6 +2445,9 @@ function renderFWD() {
     const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
     features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
   }
+  // Cinza base: segmentos sem dado FWD
+  const sresFWD = new Set(features.map(f => f.properties.trecho));
+  _drawGrayBase(fwdLayerGroup, sresFWD);
 
   // Agrupar por trecho para desenhar linhas contínuas
   // Usar roads_data para pegar as geometrias
@@ -3179,7 +3214,13 @@ function renderRecuperacao() {
       }
       return;
     }
-    // Sem nenhum dado — não desenha
+    // Sem nenhum dado — linha cinza
+    const grayCoords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
+    const isFed = (feat.properties.jurisdicao||'').includes('FEDERAL');
+    L.polyline(grayCoords, {
+      color: '#b0b8c4', weight: isFed ? 3 : 1.5, opacity: 0.45,
+      smoothFactor: 1, interactive: false,
+    }).addTo(recLayerGroup);
   });
 
   // Estatísticas
@@ -3220,6 +3261,8 @@ function renderLVCFiltered() {
     const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
     features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
   }
+  const sresLVCF = new Set(features.map(f => f.properties.trecho));
+  _drawGrayBase(lvcLayerGroup, sresLVCF);
   features.forEach(f => {
     const color = LVC_COLORS[f.properties.conceito] || '#94a3b8';
     const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),{color,weight:4,opacity:0.95,smoothFactor:1});
@@ -3453,6 +3496,7 @@ function setModo(modo) {
   if (recLayerGroup) recLayerGroup.clearLayers();
   if (obrasLayerGroup) obrasLayerGroup.clearLayers();
   if (obrasMarkerGroup) obrasMarkerGroup.clearLayers();
+  obrasAtivos.clear();
   ['lvc','iri','fwd'].forEach(m => {
     const c = document.getElementById(m+'-resumo-card');
     if (c) c.classList.remove('active');
@@ -3537,6 +3581,10 @@ function renderLVC() {
     const basesAtivos = new Set([...activeNames].map(n=>n.slice(0,-2)));
     features = features.filter(f => basesAtivos.has(f.properties.trecho.slice(0,-2)));
   }
+  // Cinza base: segmentos sem dado LVC
+  const sresLVC = new Set(features.map(f => f.properties.trecho));
+  _drawGrayBase(lvcLayerGroup, sresLVC);
+
   const total = features.length;
   let done = 0;
 
@@ -3765,7 +3813,7 @@ function obrasGetColor(tipo) {
 }
 
 let obrasLayerGroup = null;
-let obrasAnoAtivo = null;
+let obrasAtivos = new Set(); // labels ativos (toggle multi-seleção)
 let obrasMarkerGroup = null;
 
 function obrasRecarregar() {
@@ -3799,39 +3847,84 @@ async function initObrasPanel() {
 }
 
 function obrasSelectAno(label) {
-  obrasAnoAtivo = label;
-  const isAndamento = label.includes('ANDAMENTO');
+  // Toggle: adiciona ou remove do Set
+  if (obrasAtivos.has(label)) {
+    obrasAtivos.delete(label);
+  } else {
+    obrasAtivos.add(label);
+  }
 
+  // Atualizar visual dos botões
   document.querySelectorAll('#obras-ano-btns .lvc-ano-btn').forEach(b => {
-    const isAtivo = b.dataset.label === label;
-    b.classList.toggle('active', isAtivo);
-    const obras = OBRAS_DATA[b.dataset.label] || [];
-    const isAnd = b.dataset.label.includes('ANDAMENTO');
-    b.querySelector('.btn-label').textContent = isAtivo ? 'Ativo'
-      : obras.length + (isAnd ? ' obras em andamento' : ' obras concluídas');
+    const lbl = b.dataset.label;
+    const ativo = obrasAtivos.has(lbl);
+    b.classList.toggle('active', ativo);
+    const obras = OBRAS_DATA[lbl] || [];
+    const isAnd = lbl.includes('ANDAMENTO');
+    const count = obras.length;
+    b.querySelector('.btn-label').textContent = ativo
+      ? `${count} ${isAnd ? 'em andamento' : 'concluídas'} ✓`
+      : count + (isAnd ? ' obras em andamento' : ' obras concluídas');
   });
 
-  renderObras(label);
+  renderObrasAtivos();
 }
 
-function renderObras(label) {
+
+// ── Ícone cinza para obras sem localização definida ──
+function _obrasDesenharSemLocalizacao(obra) {
+  if (!obrasLayerGroup) return;
+  const icon = L.divIcon({
+    className: '',
+    html: `<div title="${obra.rodovia} — ${obra.descricao}" style="
+      width:28px;height:28px;border-radius:50%;
+      background:#94a3b8;border:2px solid #cbd5e1;
+      display:flex;align-items:center;justify-content:center;
+      font-size:13px;cursor:pointer;
+      box-shadow:0 1px 4px rgba(0,0,0,0.25);
+      transition:transform 0.15s;
+    ">?</div>`,
+    iconSize: [28, 28], iconAnchor: [14, 14],
+  });
+  const m = L.marker([0, 0], { icon, opacity: 0 }); // invisível — só para interação futura
+  // Por enquanto não adiciona ao mapa para não poluir
+  // m.addTo(obrasLayerGroup);
+}
+
+function renderObrasAtivos() {
   if (!obrasLayerGroup) obrasLayerGroup = L.layerGroup().addTo(map);
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
   obrasLayerGroup.clearLayers();
   obrasMarkerGroup.clearLayers();
 
-  const obras = OBRAS_DATA[label] || [];
-  const geojsonFeatures = allFeatures; // features do shapefile principal
+  // Juntar todas as obras dos labels ativos
+  const todasObras = [];
+  obrasAtivos.forEach(label => {
+    (OBRAS_DATA[label] || []).forEach(o => todasObras.push({...o, _label: label}));
+  });
 
+  const geojsonFeatures = allFeatures;
   let totalExt = 0;
-  let totalValor = 0;
 
-  obras.forEach(obra => {
+  // ── Camada base: todos os segmentos do shapefile em cinza ──
+  const sresComObra = new Set();
+  todasObras.forEach(obra => {
+    (obra.sres || []).forEach(sre => sresComObra.add(sre));
+  });
+
+  geojsonFeatures.forEach(f => {
+    const sre = f.properties.name || f.properties.id;
+    if (sresComObra.has(sre)) return; // vai ser desenhado colorido depois
+    if (!f.geometry) return;
+    const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
+    L.polyline(coords, { color: '#94a3b8', weight: 2, opacity: 0.5, smoothFactor: 1 })
+      .addTo(obrasLayerGroup);
+  });
+
+  todasObras.forEach(obra => {
     const color = obrasGetColor(obra.tipo);
     const ext = parseFloat(String(obra.extensao).replace(',','.')) || 0;
     totalExt += ext;
-    // Extrair valor numérico
-    const valorNum = parseFloat(String(obra.valor).replace(/[^0-9,]/g,'').replace(',','.')) || 0;
 
     if (obra.coordLat && obra.coordLng) {
       // ── Obra pontual: marcador trator amarelo ──
@@ -3898,6 +3991,7 @@ function renderObras(label) {
 
     } else if (obra.sres && obra.sres.length > 0) {
       // ── Obra linear: desenhar segmentos do shapefile ──
+      let linesAdded = 0;
       obra.sres.forEach(sre => {
         const feat = geojsonFeatures.find(f => f.properties.name === sre || f.properties.id === sre);
         if (!feat || !feat.geometry) return;
@@ -3914,21 +4008,28 @@ function renderObras(label) {
         });
         line.addTo(obrasLayerGroup);
         hitLine.addTo(obrasLayerGroup);
+        linesAdded++;
       });
+      // ── SREs listados mas nenhum encontrado no shapefile → ícone cinza ──
+      if (linesAdded === 0) {
+        _obrasDesenharSemLocalizacao(obra);
+      }
+    } else {
+      // ── Sem SREs e sem coordenadas → ícone cinza pendente ──
+      _obrasDesenharSemLocalizacao(obra);
     }
-    // Obras sem SREs e sem coordenadas não são desenhadas ainda
   });
 
   // Stats bar
   const bar = document.getElementById('obras-stats-bar');
   const legend = document.getElementById('obras-legend');
-  bar.style.display = 'flex';
-  legend.style.display = 'flex';
-  document.getElementById('obras-stat-total').textContent = obras.length;
+  bar.style.display = obrasAtivos.size > 0 ? 'flex' : 'none';
+  legend.style.display = obrasAtivos.size > 0 ? 'flex' : 'none';
+  document.getElementById('obras-stat-total').textContent = todasObras.length;
   document.getElementById('obras-stat-ext').textContent = totalExt.toLocaleString('pt-BR', {maximumFractionDigits:1});
 
   // Valor total formatado
-  const valorTotal = obras.reduce((sum, o) => {
+  const valorTotal = todasObras.reduce((sum, o) => {
     const v = parseFloat(String(o.valor).replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
     return sum + v;
   }, 0);
