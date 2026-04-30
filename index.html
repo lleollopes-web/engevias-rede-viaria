@@ -3938,7 +3938,13 @@ function _obrasDesenharSemLocalizacao(obra) {
 }
 
 function renderObrasAtivos() {
-  if (!obrasLayerGroup) obrasLayerGroup = L.layerGroup().addTo(map);
+  if (!obrasLayerGroup) {
+    if (!map.getPane('obrasPane')) {
+      map.createPane('obrasPane');
+      map.getPane('obrasPane').style.zIndex = 450; // acima do overlayPane(400)
+    }
+    obrasLayerGroup = L.layerGroup().addTo(map);
+  }
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
   obrasLayerGroup.clearLayers();
   obrasMarkerGroup.clearLayers();
@@ -4039,29 +4045,26 @@ function renderObrasAtivos() {
         const feat = geojsonFeatures.find(f => f.properties.name === sre || f.properties.id === sre);
         if (!feat || !feat.geometry) return;
         const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
-        const line = L.polyline(coords, { color, weight: 5, opacity: 0.9, smoothFactor: 1 });
-        const hitLine = L.polyline(coords, { color: '#000', weight: 14, opacity: 0.001, className: 'obras-hit' });
-        hitLine.on('click', (e) => {
+        const line = L.polyline(coords, {
+          color, weight: 6, opacity: 0.9, smoothFactor: 1,
+          interactive: true, bubblingMouseEvents: false,
+          className: 'obras-hit', pane: 'obrasPane'
+        });
+        line.on('click', (e) => {
           L.DomEvent.stopPropagation(e);
           marcarCliqueEmLinha();
           fecharCoordPopup();
-          console.log('CLIQUE OBRA ANUAL:', obra.num, obra.label, obra.isAndamento, obra.descricao);
-          try {
-            openObrasModal(obra);
-          } catch(err) {
-            console.error('ERRO openObrasModal:', err.message, err.stack);
-            alert('Erro: ' + err.message);
-          }
+          openObrasModal(obra);
         });
-        hitLine.on('mouseover', function() {
-          line.setStyle({ weight: 7, opacity: 1 });
-          this.getElement() && (this.getElement().style.cursor = 'pointer');
+        line.on('mouseover', function() {
+          this.setStyle({ weight: 9, opacity: 1 });
+          const el = this.getElement();
+          if (el) el.style.cursor = 'pointer';
         });
-        hitLine.on('mouseout', function() {
-          line.setStyle({ weight: 5, opacity: 0.9 });
+        line.on('mouseout', function() {
+          this.setStyle({ weight: 6, opacity: 0.9 });
         });
         line.addTo(obrasLayerGroup);
-        hitLine.addTo(obrasLayerGroup);
         linesAdded++;
       });
       // ── SREs listados mas nenhum encontrado no shapefile → ícone cinza ──
