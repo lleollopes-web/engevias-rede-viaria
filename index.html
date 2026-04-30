@@ -1902,6 +1902,10 @@ function copiarCoordenadas() {
 // Rastreamos se o clique foi numa linha via flag
 let _clicouEmLinha = false;
 
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fecharCoordPopup();
+});
+
 function marcarCliqueEmLinha() { _clicouEmLinha = true; }
 
 function closeInfo() {
@@ -4110,7 +4114,10 @@ document.addEventListener('click', function(e) {
 
   <!-- Popup Coordenadas -->
   <div id="coord-popup">
-    <div class="coord-popup-title">📍 Coordenadas do Ponto</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="coord-popup-title" style="margin-bottom:0">📍 Coordenadas do Ponto</div>
+      <button onclick="fecharCoordPopup()" style="background:rgba(255,255,255,0.1);border:none;color:#94a3b8;width:20px;height:20px;border-radius:4px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;" title="Fechar">✕</button>
+    </div>
     <div class="coord-row">
       <span class="coord-label">Latitude</span>
       <span class="coord-value" id="coord-lat">—</span>
