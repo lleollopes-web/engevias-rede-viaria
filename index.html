@@ -1302,7 +1302,6 @@ async function initApp() {
   if (dataRes.ok) {
     GEOJSON = await dataRes.json();
     allFeatures = GEOJSON.features || [];
-    _ensureGrayLayer(); // pré-renderizar camada cyan base
   }
 
   map = L.map('map', { center:[-5.0,-39.3], zoom:7, maxZoom:18 });
@@ -1317,6 +1316,7 @@ async function initApp() {
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
+  _buildGrayLayer(); // camada cyan permanente — começa oculta
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
   map.on('click', (e) => {
@@ -1764,46 +1764,47 @@ function iriSelectAno(ano) {
 let _grayLayer = null;
 let _grayLayerItems = [];
 
-function _ensureGrayLayer() {
-  if (_grayLayer || !allFeatures.length) return;
+// ── Camada cyan base: desenhada UMA vez, fica permanentemente no mapa ──
+// Estratégia: gray layer é criada logo após allFeatures ser carregado,
+// adicionada ao mapa abaixo de tudo. Linhas coloridas vão para layerGroups
+// específicos que ficam acima naturalmente.
+
+function _buildGrayLayer() {
+  if (_grayLayer) return; // já criada
+  if (!allFeatures || !allFeatures.length) return;
   _grayLayer = L.layerGroup();
   allFeatures.forEach(f => {
     if (!f.geometry) return;
-    const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-    const isFed = (f.properties.jurisdicao || '').includes('FEDERAL');
-    const line = L.polyline(coords, {
-      color: '#06b6d4', weight: isFed ? 3 : 1.5,
-      opacity: 0.5, smoothFactor: 2, interactive: false,
-    });
+    const isFed = (f.properties.jurisdicao || '').toUpperCase().includes('FEDERAL');
+    const line = L.polyline(
+      f.geometry.coordinates.map(c => [c[1], c[0]]),
+      { color: '#06b6d4', weight: isFed ? 3 : 1.5, opacity: 0, smoothFactor: 2, interactive: false }
+    );
     line._sreKey = f.properties.name || f.properties.id;
     line.addTo(_grayLayer);
     _grayLayerItems.push(line);
   });
+  _grayLayer.addTo(map); // adiciona ao mapa permanentemente
 }
 
 function _drawGrayBase(_, sresComDado) {
-  _ensureGrayLayer();
+  _buildGrayLayer();
   if (!_grayLayer) return;
-  if (!map.hasLayer(_grayLayer)) _grayLayer.addTo(map);
-  _grayLayer.bringToBack();
-  if (!_grayLayer) return;
-  if (!map.hasLayer(_grayLayer)) _grayLayer.addTo(map);
-  _grayLayer.bringToBack();
+  // Mostrar/ocultar cada linha: visível se NÃO tem dado colorido
   _grayLayerItems.forEach(l => {
-    l.setStyle({ opacity: sresComDado && sresComDado.has(l._sreKey) ? 0 : 0.5 });
+    l.setStyle({ opacity: (sresComDado && sresComDado.has(l._sreKey)) ? 0 : 0.5 });
   });
 }
 
 function _showAllGray() {
-  _ensureGrayLayer();
+  _buildGrayLayer();
   if (!_grayLayer) return;
-  if (!map.hasLayer(_grayLayer)) _grayLayer.addTo(map);
-  _grayLayer.bringToBack();
   _grayLayerItems.forEach(l => l.setStyle({ opacity: 0.5 }));
 }
 
 function _hideGrayLayer() {
-  if (_grayLayer && map.hasLayer(_grayLayer)) _grayLayer.remove();
+  // Apenas ocultar todas as linhas (mantém no mapa para performance)
+  _grayLayerItems.forEach(l => l.setStyle({ opacity: 0 }));
 }
 
 function renderIRI() {
