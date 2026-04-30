@@ -1631,6 +1631,7 @@ function iriSelectUltimaAtualizacao() {
   if (!iriLayerGroup) iriLayerGroup = L.layerGroup().addTo(map);
   iriLayerGroup.clearLayers();
   iriCurrentAno = null; // modo última atualização
+  _showAllGray(); // base cyan enquanto carrega
 
   const anos = ['2025','2024','2023'];
   const activeNamesIri = mfGetActiveNames('iri');
@@ -1733,6 +1734,9 @@ function iriSelectUltimaAtualizacao() {
   document.getElementById('iri-resumo-trechos').textContent = trechosNoMapa.size.toLocaleString('pt-BR');
   document.getElementById('iri-resumo-ext').textContent = extNoMapa.toFixed(1).replace('.',',');
   document.getElementById('iri-resumo-card').classList.add('active');
+  // Mascarar na camada gray os SREs que têm dado IRI
+  const sresIriUlt = new Set(allFeats.map(f => f.properties.trecho));
+  _drawGrayBase(iriLayerGroup, sresIriUlt);
 }
 
 function iriSelectAno(ano) {
@@ -1755,23 +1759,59 @@ function iriSelectAno(ano) {
 }
 
 
-// ── Camada cinza base: todos os segmentos sem dado no modo atual ──
-function _drawGrayBase(layerGroup, sresComDado) {
-  // sresComDado: Set com os names/ids que já têm dado e serão coloridos
+// ── Camada cyan base: pré-renderizada uma vez, reusada em todos os modos ──
+let _grayLayer = null;       // camada com TODAS as linhas cyan
+let _grayLayerItems = [];    // referência para esconder linhas individuais
+
+function _ensureGrayLayer() {
+  if (_grayLayer) return;
+  _grayLayer = L.layerGroup().addTo(map);
+  // Pré-renderizar todos os segmentos uma única vez
   allFeatures.forEach(f => {
-    const name = f.properties.name || f.properties.id;
-    if (sresComDado && sresComDado.has(name)) return; // vai ser colorido
     if (!f.geometry) return;
     const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-    const isFederal = (f.properties.jurisdicao || '').includes('FEDERAL');
-    L.polyline(coords, {
-      color: '#67e8f9',
-      weight: isFederal ? 3 : 1.5,
-      opacity: 0.45,
-      smoothFactor: 1,
+    const isFed = (f.properties.jurisdicao || '').includes('FEDERAL');
+    const name = f.properties.name || f.properties.id;
+    const line = L.polyline(coords, {
+      color: '#06b6d4',
+      weight: isFed ? 3 : 1.5,
+      opacity: 0.5,
+      smoothFactor: 2,
       interactive: false,
-    }).addTo(layerGroup);
+    });
+    line._sreKey = name;
+    line.addTo(_grayLayer);
+    _grayLayerItems.push(line);
   });
+}
+
+function _drawGrayBase(layerGroup, sresComDado) {
+  _ensureGrayLayer();
+  // Garantir que a camada cinza está abaixo das coloridas
+  if (_grayLayer && map.hasLayer(_grayLayer)) {
+    _grayLayer.remove();
+    _grayLayer.addTo(map);
+  }
+  // Mostrar/ocultar por SRE (mudar opacidade individualmente)
+  _grayLayerItems.forEach(line => {
+    const key = line._sreKey;
+    const temDado = sresComDado && sresComDado.has(key);
+    // Usar setStyle para ocultar os que têm dado colorido por cima
+    line.setStyle({ opacity: temDado ? 0 : 0.5 });
+  });
+}
+
+function _showAllGray() {
+  _ensureGrayLayer();
+  if (_grayLayer && map.hasLayer(_grayLayer)) {
+    _grayLayer.remove();
+    _grayLayer.addTo(map);
+  }
+  _grayLayerItems.forEach(line => line.setStyle({ opacity: 0.5 }));
+}
+
+function _hideGrayLayer() {
+  if (_grayLayer) _grayLayer.remove();
 }
 
 function renderIRI() {
@@ -3143,9 +3183,13 @@ function renderRecuperacao() {
   if (!recLayerGroup) recLayerGroup = L.layerGroup().addTo(map);
   recLayerGroup.clearLayers();
 
+  // Primeiro mostrar todos em gray, depois mascarar os que têm dado
+  _showAllGray();
+
   const stats3={}, stats2={}, stats1={};
   Object.keys(REC_COLORS).forEach(k=>{stats3[k]={count:0,ext:0};stats2[k]={count:0,ext:0};stats1[k]={count:0,ext:0};});
 
+  const sresComDadoRec = new Set();
   allFeatures.forEach(feat => {
     const name = feat.properties.name;
     if (!name) return;
@@ -3166,6 +3210,7 @@ function renderRecuperacao() {
       const interv = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
       if (!stats3[interv]) stats3[interv]={count:0,ext:0};
       stats3[interv].count++; stats3[interv].ext+=extKm;
+      sresComDadoRec.add(name);
       if (recVisActive.has(3)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.95,smoothFactor:1});
@@ -3184,6 +3229,7 @@ function renderRecuperacao() {
       const interv = MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS';
       if (!stats2[interv]) stats2[interv]={count:0,ext:0};
       stats2[interv].count++; stats2[interv].ext+=extKm;
+      sresComDadoRec.add(name);
       if (recVisActive.has(2)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.85,smoothFactor:1});
@@ -3202,6 +3248,7 @@ function renderRecuperacao() {
       const interv = MATRIZ_SO_LVC[lvcC] || 'SEM DADOS';
       if (!stats1[interv]) stats1[interv]={count:0,ext:0};
       stats1[interv].count++; stats1[interv].ext+=extKm;
+      sresComDadoRec.add(name);
       if (recVisActive.has(1)) {
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.7,smoothFactor:1});
@@ -3214,14 +3261,11 @@ function renderRecuperacao() {
       }
       return;
     }
-    // Sem nenhum dado — linha cinza
-    const grayCoords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
-    const isFed = (feat.properties.jurisdicao||'').includes('FEDERAL');
-    L.polyline(grayCoords, {
-      color: '#67e8f9', weight: isFed ? 3 : 1.5, opacity: 0.45,
-      smoothFactor: 1, interactive: false,
-    }).addTo(recLayerGroup);
+    // Sem nenhum dado — deixa a camada gray base mostrar
   });
+
+  // Mascarar segmentos com dado na camada gray
+  _drawGrayBase(recLayerGroup, sresComDadoRec);
 
   // Estatísticas
   const statsEl = document.getElementById('rec-stats');
@@ -3493,10 +3537,12 @@ function setModo(modo) {
   if (lvcLayerGroup) lvcLayerGroup.clearLayers();
   if (iriLayerGroup) iriLayerGroup.clearLayers();
   if (fwdLayerGroup) fwdLayerGroup.clearLayers();
+  _hideGrayLayer();
   if (recLayerGroup) recLayerGroup.clearLayers();
   if (obrasLayerGroup) obrasLayerGroup.clearLayers();
   if (obrasMarkerGroup) obrasMarkerGroup.clearLayers();
   obrasAtivos.clear();
+  _hideGrayLayer();
   ['lvc','iri','fwd'].forEach(m => {
     const c = document.getElementById(m+'-resumo-card');
     if (c) c.classList.remove('active');
@@ -3906,20 +3952,12 @@ function renderObrasAtivos() {
   const geojsonFeatures = allFeatures;
   let totalExt = 0;
 
-  // ── Camada base: todos os segmentos do shapefile em cinza ──
+  // ── Camada base cyan: usar camada pré-renderizada ──
   const sresComObra = new Set();
   todasObras.forEach(obra => {
     (obra.sres || []).forEach(sre => sresComObra.add(sre));
   });
-
-  geojsonFeatures.forEach(f => {
-    const sre = f.properties.name || f.properties.id;
-    if (sresComObra.has(sre)) return; // vai ser desenhado colorido depois
-    if (!f.geometry) return;
-    const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-    L.polyline(coords, { color: '#67e8f9', weight: 2, opacity: 0.5, smoothFactor: 1 })
-      .addTo(obrasLayerGroup);
-  });
+  _drawGrayBase(obrasLayerGroup, sresComObra);
 
   todasObras.forEach(obra => {
     const color = obrasGetColor(obra.tipo);
