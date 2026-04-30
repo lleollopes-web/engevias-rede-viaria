@@ -1317,6 +1317,10 @@ async function initApp() {
   });
   tileMap.addTo(map);
   layerGroup = L.layerGroup().addTo(map);
+  // Pane dedicado para obras — acima de tudo, garante cliques
+  map.createPane('obrasPane');
+  map.getPane('obrasPane').style.zIndex = 650;
+  map.getPane('obrasPane').style.pointerEvents = 'auto';
   _buildGrayLayer(); // camada cyan permanente — começa oculta
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
@@ -3746,7 +3750,7 @@ async function carregarObrasXLSX() {
         if (isNaN(num)) continue;
 
         // Detectar SREs e coordenadas a partir da coluna "LISTA DE SRES"
-        const sreColIdx = isAndamento ? (col['LISTA DE SRES'] ?? 30) : (col['LISTA DE SRES'] ?? 20);
+        const sreColIdx = isAndamento ? 30 : 20; // fixo: anuais col 20, andamento col 30
         let sres = [], coordLat = null, coordLng = null;
         const u0 = row[sreColIdx] != null ? String(row[sreColIdx]).trim() : '';
         const u1 = row[sreColIdx+1] != null ? String(row[sreColIdx+1]).trim() : '';
@@ -3939,10 +3943,6 @@ function _obrasDesenharSemLocalizacao(obra) {
 
 function renderObrasAtivos() {
   if (!obrasLayerGroup) {
-    if (!map.getPane('obrasPane')) {
-      map.createPane('obrasPane');
-      map.getPane('obrasPane').style.zIndex = 450; // acima do overlayPane(400)
-    }
     obrasLayerGroup = L.layerGroup().addTo(map);
   }
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
