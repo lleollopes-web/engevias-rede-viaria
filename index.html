@@ -1773,19 +1773,26 @@ let _grayLayerItems = [];
 function _buildGrayLayer() {
   if (_grayLayer) return; // já criada
   if (!allFeatures || !allFeatures.length) return;
+  // Criar pane dedicado com z-index muito baixo para não interceptar cliques
+  if (!map.getPane('grayPane')) {
+    map.createPane('grayPane');
+    map.getPane('grayPane').style.zIndex = 200; // abaixo de overlayPane (400)
+    map.getPane('grayPane').style.pointerEvents = 'none'; // nunca intercepta cliques
+  }
   _grayLayer = L.layerGroup();
   allFeatures.forEach(f => {
     if (!f.geometry) return;
     const isFed = (f.properties.jurisdicao || '').toUpperCase().includes('FEDERAL');
     const line = L.polyline(
       f.geometry.coordinates.map(c => [c[1], c[0]]),
-      { color: '#06b6d4', weight: isFed ? 3 : 1.5, opacity: 0, smoothFactor: 2, interactive: false }
+      { color: '#06b6d4', weight: isFed ? 3 : 1.5, opacity: 0, smoothFactor: 2,
+        interactive: false, pane: 'grayPane' }
     );
     line._sreKey = f.properties.name || f.properties.id;
     line.addTo(_grayLayer);
     _grayLayerItems.push(line);
   });
-  _grayLayer.addTo(map); // adiciona ao mapa permanentemente
+  _grayLayer.addTo(map);
 }
 
 function _drawGrayBase(_, sresComDado) {
