@@ -356,6 +356,37 @@
   #lvc-filters { padding:12px 16px; border-bottom:1px solid var(--border); display:none; }
   #lvc-filters.active { display:block; }
 
+  /* ===== POPUP COORDENADAS ===== */
+  #coord-popup {
+    display:none; position:fixed; z-index:8000;
+    background:#1a2940; color:#fff;
+    border-radius:10px; padding:10px 14px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.4);
+    font-family:'Inter',sans-serif; font-size:12px;
+    pointer-events:auto; min-width:210px;
+    animation:fadeUp 0.15s ease;
+    border:1px solid rgba(255,255,255,0.1);
+  }
+  #coord-popup.visible { display:block; }
+  .coord-popup-title {
+    font-size:10px; font-weight:700; letter-spacing:1px;
+    text-transform:uppercase; color:#7a95b0; margin-bottom:8px;
+  }
+  .coord-row {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:5px; gap:12px;
+  }
+  .coord-label { font-size:10px; color:#94a3b8; font-weight:600; text-transform:uppercase; }
+  .coord-value { font-size:13px; font-weight:700; color:#fff; font-family:'Inter Tight',monospace; letter-spacing:0.5px; }
+  .coord-copy-btn {
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    margin-top:9px; width:100%; padding:6px;
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    border-radius:6px; color:#94a3b8; font-size:11px; font-weight:600;
+    cursor:pointer; transition:all 0.15s; font-family:'Inter',sans-serif;
+  }
+  .coord-copy-btn:hover { background:rgba(255,255,255,0.15); color:#fff; }
+
   /* ===== OBRAS RODOVIÁRIAS ===== */
   #obras-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   #obras-panel.active { display:flex; }
@@ -1280,12 +1311,32 @@ async function initApp() {
   layerGroup = L.layerGroup().addTo(map);
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
-  map.on('click', () => {
+  map.on('click', (e) => {
     removeKmPin();
     // Só limpar busca e refiltrar se estiver no modo Situação Geral
     if (currentModo === 'jurisdicao') {
       document.getElementById('search-input').value = '';
       applyFilters();
+    }
+    // Mostrar popup de coordenadas se clicou em área vazia (não numa linha)
+    // Usamos setTimeout para deixar os handlers das linhas rodarem primeiro
+    if (currentModo === 'jurisdicao') {
+      setTimeout(() => {
+        if (!_clicouEmLinha) {
+          fecharCoordPopup();
+          // Calcular posição do clique na tela
+          const containerPt = map.latLngToContainerPoint(e.latlng);
+          const mapDiv = document.getElementById('map').getBoundingClientRect();
+          mostrarCoordPopup(
+            e.latlng.lat, e.latlng.lng,
+            mapDiv.left + containerPt.x,
+            mapDiv.top  + containerPt.y
+          );
+        }
+        _clicouEmLinha = false;
+      }, 20);
+    } else {
+      fecharCoordPopup();
     }
   });
 
@@ -1374,7 +1425,7 @@ function renderMap(features) {
     hit._kmFeature = f; // referência para o KM real-time
     hit._origColor  = cfg.color;
     hit._origWeight = cfg.width + 4;
-    hit.on('click', ()=>showInfo(p));
+    hit.on('click', ()=>{ marcarCliqueEmLinha(); fecharCoordPopup(); showInfo(p); });
     hit.on('mouseover', function(){
       line.setStyle({weight:cfg.width+2, opacity:1});
       if (!isMobile) this.getElement() && (this.getElement().style.cursor='pointer');
@@ -1804,6 +1855,54 @@ function showIriDiagram(name) {
   diagram.classList.add('active');
   updateKmBtnPosition();
 }
+
+
+// ── POPUP DE COORDENADAS ─────────────────────────────────────────────────────
+let _coordPopupOpen = false;
+let _coordLat = 0, _coordLng = 0;
+
+function mostrarCoordPopup(lat, lng, mouseX, mouseY) {
+  _coordLat = lat; _coordLng = lng;
+  const popup = document.getElementById('coord-popup');
+  document.getElementById('coord-lat').textContent = lat.toFixed(6) + '°';
+  document.getElementById('coord-lng').textContent = lng.toFixed(6) + '°';
+
+  // Posicionar próximo ao clique, evitando sair da tela
+  const W = window.innerWidth, H = window.innerHeight;
+  const pw = 220, ph = 110;
+  let x = mouseX + 14, y = mouseY - 60;
+  if (x + pw > W - 10) x = mouseX - pw - 14;
+  if (y + ph > H - 10) y = H - ph - 10;
+  if (y < 10) y = 10;
+  popup.style.left = x + 'px';
+  popup.style.top  = y + 'px';
+  popup.classList.add('visible');
+  _coordPopupOpen = true;
+}
+
+function fecharCoordPopup() {
+  document.getElementById('coord-popup').classList.remove('visible');
+  _coordPopupOpen = false;
+}
+
+function copiarCoordenadas() {
+  const txt = `${_coordLat.toFixed(6)}, ${_coordLng.toFixed(6)}`;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector('.coord-copy-btn');
+    btn.textContent = '✓ Copiado!';
+    btn.style.color = '#4ade80';
+    setTimeout(() => {
+      btn.innerHTML = '📋 Copiar coordenadas';
+      btn.style.color = '';
+    }, 1800);
+  });
+}
+
+// Clique no mapa em área vazia → mostrar coords (só no modo Situação Geral)
+// Rastreamos se o clique foi numa linha via flag
+let _clicouEmLinha = false;
+
+function marcarCliqueEmLinha() { _clicouEmLinha = true; }
 
 function closeInfo() {
   document.getElementById('info-panel').classList.remove('active');
@@ -4007,6 +4106,22 @@ document.addEventListener('click', function(e) {
       <div style="font-size:14px;color:#7a95b0;line-height:1.6;margin-bottom:24px;">Este módulo está em processo de criação e estará disponível em breve.</div>
       <button onclick="closeIriPopup()" style="background:linear-gradient(135deg,#1a3a5c,#1e7fa0);border:none;border-radius:8px;padding:12px 32px;color:#fff;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer;">OK, entendido</button>
     </div>
+  </div>
+
+  <!-- Popup Coordenadas -->
+  <div id="coord-popup">
+    <div class="coord-popup-title">📍 Coordenadas do Ponto</div>
+    <div class="coord-row">
+      <span class="coord-label">Latitude</span>
+      <span class="coord-value" id="coord-lat">—</span>
+    </div>
+    <div class="coord-row">
+      <span class="coord-label">Longitude</span>
+      <span class="coord-value" id="coord-lng">—</span>
+    </div>
+    <button class="coord-copy-btn" onclick="copiarCoordenadas()">
+      📋 Copiar coordenadas
+    </button>
   </div>
 
   <!-- Modal Obras Rodoviárias -->
