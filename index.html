@@ -1257,7 +1257,7 @@ const USERS = { engevias: '0101' };
 
 // ---- AUTH ----
 document.getElementById('login-user').focus();
-document.addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.addEventListener('keydown', e => { if(e.key==='Enter' && document.getElementById('login-screen').style.display !== 'none') doLogin(); });
 
 function doLogin() {
   const u = document.getElementById('login-user').value.trim().toLowerCase();
