@@ -3597,105 +3597,151 @@ async function carregarObrasXLSX() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-    const resultado = { '2023': [], '2024': [], '2025': [] };
-    let anoAtual = null;
-    const TOTAIS = ['TOTAL DE OBRAS'];
-    const SECOES = { 'OBRAS CONCLUÍDAS 2023': '2023', 'OBRAS CONCLUÍDAS 2024': '2024', 'OBRAS CONCLUÍDAS 2025': '2025' };
+    const resultado = {};
 
-    const fmtDate = (v) => {
-      if (!v) return '';
-      if (v instanceof Date) return v.toLocaleDateString('pt-BR');
-      return String(v).trim();
-    };
-    const fmtVal = (v) => {
-      if (v === null || v === undefined || v === '') return '';
-      const f = parseFloat(v);
-      if (isNaN(f)) return '';
-      return 'R$ ' + f.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
-    const fmtPct = (v) => {
-      if (v === null || v === undefined || v === '') return '';
-      const f = parseFloat(v);
-      if (isNaN(f)) return '';
-      return (f <= 1 && f > 0 ? f * 100 : f).toFixed(f % 1 === 0 ? 0 : 1) + '%';
-    };
-    const clean = (v) => v !== null && v !== undefined ? String(v).trim().replace(/\n/g, ' ') : '';
+    wb.SheetNames.forEach(sheetName => {
+      // Extrair ano ou label da aba
+      const label = sheetName.trim(); // ex: "OBRAS 2023", "OBRAS EM ANDAMENTO"
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: null });
 
-    rows.forEach((row, i) => {
-      if (i < 2) return; // pular título e linha em branco
-      const col0 = row[0];
-      if (col0 === null || col0 === undefined) return;
-      const s0 = String(col0).trim();
-
-      // Linha de seção de ano?
-      if (SECOES[s0]) { anoAtual = SECOES[s0]; return; }
-      // Linha de total?
-      if (TOTAIS.some(t => s0.startsWith(t))) return;
-      if (!anoAtual) return;
-
-      // Linha de obra: col A deve ser número
-      const num = parseInt(s0);
-      if (isNaN(num)) return;
-
-      // Colunas U (idx 20) em diante: SREs ou coordenadas
-      const sres = [];
-      let coordLat = null, coordLng = null;
-
-      const u0 = row[20] !== null && row[20] !== undefined ? String(row[20]).trim() : '';
-      const u1 = row[21] !== null && row[21] !== undefined ? String(row[21]).trim() : '';
-
-      // Detectar se é coordenada: começa com "-" seguido de dígitos, ou contém "°"
-      const isCoord = (v) => /^\s*-?\d+\.\d+°?\s*$/.test(v) || v.includes('°');
-
-      if (u0 && isCoord(u0) && u1 && isCoord(u1)) {
-        coordLat = parseFloat(u0.replace('°','').trim());
-        coordLng = parseFloat(u1.replace('°','').trim());
-      } else {
-        for (let c = 20; c < row.length; c++) {
-          const v = row[c] !== null && row[c] !== undefined ? String(row[c]).trim() : '';
-          if (v && !isCoord(v)) sres.push(v);
-        }
+      // Detectar linha de cabeçalho (linha com "Nº" na col A)
+      let headerRow = -1;
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        if (rows[i][0] === 'Nº' || String(rows[i][0]).trim() === 'Nº') { headerRow = i; break; }
       }
+      if (headerRow < 0) return;
 
-      resultado[anoAtual].push({
-        num,
-        tipo:         clean(row[1]),
-        rodovia:      clean(row[2]),
-        descricao:    clean(row[3]),
-        extensao:     clean(row[4]),
-        municipio:    clean(row[5]),
-        macrorregiao: clean(row[6]),
-        distrito:     clean(row[7]),
-        data_inicio:  fmtDate(row[8]),
-        data_fim:     fmtDate(row[9]),
-        situacao:     clean(row[10]),
-        valor:        fmtVal(row[11]),
-        status_fisico: fmtPct(row[12]),
-        contrato:     clean(row[13]),
-        mapp:         clean(row[14]),
-        sit_mapp:     clean(row[15]),
-        tipo_pav:     clean(row[16]),
-        empresa:      clean(row[17]),
-        observacoes:  clean(row[18]),
-        evento:       clean(row[19]),
-        sres,
-        coordLat,
-        coordLng,
-        ano: anoAtual,
+      const headers = rows[headerRow]; // array de cabeçalhos
+      const isAndamento = label.includes('ANDAMENTO');
+
+      // Mapear colunas por nome do cabeçalho
+      const col = {};
+      headers.forEach((h, i) => {
+        if (!h) return;
+        const k = String(h).trim().replace(/\n/g,' ');
+        col[k] = i;
       });
+
+      const fmtDate = (v) => {
+        if (!v) return '';
+        if (v instanceof Date) return v.toLocaleDateString('pt-BR');
+        return String(v).trim();
+      };
+      const fmtVal = (v) => {
+        if (v === null || v === undefined || v === '') return '';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '';
+        return 'R$ ' + f.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      };
+      const fmtPct = (v) => {
+        if (v === null || v === undefined || v === '') return '';
+        const f = parseFloat(v);
+        if (isNaN(f)) return '';
+        const pct = (f <= 1 && f > 0) ? f * 100 : f;
+        return pct.toFixed(pct % 1 === 0 ? 0 : 1) + '%';
+      };
+      const clean = (v) => (v !== null && v !== undefined) ? String(v).trim().replace(/\n/g, ' ') : '';
+      const isCoord = (v) => /^\s*-?\d+[\.,]\d+°?\s*$/.test(String(v));
+
+      const obras = [];
+      for (let r = headerRow + 1; r < rows.length; r++) {
+        const row = rows[r];
+        if (!row[0]) continue;
+        const num = parseInt(row[0]);
+        if (isNaN(num)) continue;
+
+        // Detectar SREs e coordenadas a partir da coluna "LISTA DE SRES"
+        const sreColIdx = isAndamento ? (col['LISTA DE SRES'] ?? 30) : (col['LISTA DE SRES'] ?? 20);
+        let sres = [], coordLat = null, coordLng = null;
+        const u0 = row[sreColIdx] != null ? String(row[sreColIdx]).trim() : '';
+        const u1 = row[sreColIdx+1] != null ? String(row[sreColIdx+1]).trim() : '';
+        if (u0 && isCoord(u0) && u1 && isCoord(u1)) {
+          coordLat = parseFloat(u0.replace(/[°]/g,'').replace(',','.'));
+          coordLng = parseFloat(u1.replace(/[°]/g,'').replace(',','.'));
+        } else {
+          for (let c = sreColIdx; c < row.length; c++) {
+            const v = row[c] != null ? String(row[c]).trim() : '';
+            if (v && !isCoord(v)) sres.push(v);
+          }
+        }
+
+        let obra;
+        if (isAndamento) {
+          // Aba "OBRAS EM ANDAMENTO" — colunas diferentes
+          obra = {
+            num,
+            tipo:           clean(row[col['Tipo'] ?? 1]),
+            rodovia:        clean(row[col['ROD.'] ?? 2]),
+            descricao:      clean(row[col['DESCRIÇÃO'] ?? 3]),
+            fiscal:         clean(row[col['FISCAL'] ?? 4]),
+            extensao:       clean(row[col['EXT. (KM)'] ?? 5]),
+            municipio:      clean(row[col['MUNICÍPIO'] ?? 6]),
+            macrorregiao:   clean(row[col['MACRORREGIÃO'] ?? 7]),
+            distrito:       clean(row[col['DISTRITO OPERACIONAL'] ?? 8]),
+            data_inicio:    fmtDate(row[col['DATA INÍCIO\n(OS)'] ?? col['DATA INÍCIO (OS)'] ?? 9]),
+            data_fim:       fmtDate(row[col['DATA FINAL\n(EXECUÇÃO)'] ?? col['DATA FINAL (EXECUÇÃO)'] ?? 10]),
+            vigencia:       fmtDate(row[col['VIGÊNCIA DO \nCONTRATO'] ?? col['VIGÊNCIA DO CONTRATO'] ?? 11]),
+            previsao_conclusao: fmtDate(row[col['PREVISÃO DE CONCLUSÃO'] ?? 12]),
+            situacao:       clean(row[col['SITUAÇÃO'] ?? 13]),
+            empregos_dir:   clean(row[col['EMPREGOS DIRETOS'] ?? 14]),
+            empregos_ind:   clean(row[col['EMPREGOS INDIRETOS'] ?? 15]),
+            valor:          fmtVal(row[col['VALOR DO CONTRATO (R$)'] ?? 16]),
+            status_fisico:  fmtPct(row[col['STATUS\nFÍSICO \n(%)'] ?? col['STATUS FÍSICO (%)'] ?? 17]),
+            total_empenhado: fmtVal(row[col['TOTAL EMPENHADO\n(R$)'] ?? 18]),
+            status_financeiro: fmtPct(row[col['STATUS\nFINANCEIRO (%)'] ?? 19]),
+            saldo_contrato: fmtVal(row[col['SALDO DO CONTRATO\n(R$)'] ?? 20]),
+            previsao_2025:  fmtVal(row[col['PREVISÃO PARA 2025 \n(R$)'] ?? 21]),
+            contrato:       clean(row[col['CONTRATOS'] ?? 22]),
+            mapp:           clean(row[col['MAPP'] ?? 23]),
+            sit_mapp:       clean(row[col['SITUAÇÃO'] ?? 24]),
+            tipo_pav:       clean(row[col['TIPO DE PAVIMENTO'] ?? 25]),
+            empresa:        clean(row[col['EMPRESAS'] ?? 26]),
+            observacoes:    clean(row[col['OBSERVAÇÕES'] ?? 27]),
+            interferencia:  clean(row[col['INTERFERÊNCIA'] ?? 28]),
+            evento:         clean(row[col['EVENTO POLÍTICO'] ?? 29]),
+            sres, coordLat, coordLng,
+            label, isAndamento: true,
+          };
+        } else {
+          // Abas de obras concluídas (2023, 2024, 2025)
+          obra = {
+            num,
+            tipo:         clean(row[col['Tipo'] ?? 1]),
+            rodovia:      clean(row[col['ROD.'] ?? 2]),
+            descricao:    clean(row[col['DESCRIÇÃO'] ?? 3]),
+            extensao:     clean(row[col['EXT. (KM)'] ?? 4]),
+            municipio:    clean(row[col['MUNICÍPIO'] ?? 5]),
+            macrorregiao: clean(row[col['MACRORREGIÃO'] ?? 6]),
+            distrito:     clean(row[col['DISTRITO OPERACIONAL'] ?? 7]),
+            data_inicio:  fmtDate(row[col['DATA INÍCIO\n(OS)'] ?? col['DATA INÍCIO (OS)'] ?? 8]),
+            data_fim:     fmtDate(row[col['DATA FINAL\n(EXECUÇÃO)'] ?? col['DATA FINAL (EXECUÇÃO)'] ?? 9]),
+            situacao:     clean(row[col['SITUAÇÃO'] ?? 10]),
+            valor:        fmtVal(row[col['VALOR DO CONTRATO (R$)'] ?? 11]),
+            status_fisico: fmtPct(row[col['STATUS\nFÍSICO \n(%)'] ?? col['STATUS FÍSICO (%)'] ?? 12]),
+            contrato:     clean(row[col['CONTRATOS'] ?? 13]),
+            mapp:         clean(row[col['MAPP'] ?? 14]),
+            sit_mapp:     clean(row[col['SITUAÇÃO'] ?? 15]),
+            tipo_pav:     clean(row[col['TIPO DE PAVIMENTO'] ?? 16]),
+            empresa:      clean(row[col['EMPRESAS'] ?? 17]),
+            observacoes:  clean(row[col['OBSERVAÇÕES'] ?? 18]),
+            evento:       clean(row[col['EVENTO POLÍTICO'] ?? 19]),
+            sres, coordLat, coordLng,
+            label, isAndamento: false,
+          };
+        }
+        obras.push(obra);
+      }
+      resultado[label] = obras;
     });
 
     OBRAS_DATA = resultado;
     obrasCarregadas = true;
-    console.log('Obras carregadas:', Object.entries(OBRAS_DATA).map(([a,v])=>a+':'+v.length+'obras').join(', '));
+    console.log('Obras carregadas:', Object.entries(OBRAS_DATA).map(([a,v])=>a+':'+v.length).join(', '));
   } catch (err) {
     console.error('Erro ao carregar obras.xlsx:', err);
-    // Fallback: mantém OBRAS_DATA vazio, mostra aviso
-    document.getElementById('obras-load-status').textContent = '⚠️ Erro ao carregar planilha. Verifique o arquivo no GitHub.';
-    document.getElementById('obras-load-status').style.display = 'block';
+    const el = document.getElementById('obras-load-status');
+    if (el) { el.textContent = '⚠️ Erro ao carregar planilha. Verifique o arquivo no GitHub.'; el.style.display = 'block'; }
   }
 }
 
@@ -3736,38 +3782,45 @@ async function initObrasPanel() {
   await carregarObrasXLSX();
 
   btns.innerHTML = '';
-  ['2023','2024','2025'].forEach(ano => {
-    const obras = OBRAS_DATA[ano] || [];
+  Object.keys(OBRAS_DATA).forEach(label => {
+    const obras = OBRAS_DATA[label] || [];
+    const isAndamento = label.includes('ANDAMENTO');
     const btn = document.createElement('button');
     btn.className = 'lvc-ano-btn';
-    btn.dataset.ano = ano;
-    btn.innerHTML = `<span style="font-size:16px">${ano}</span><span class="btn-label" style="font-size:11px;font-weight:500;white-space:nowrap">${obras.length} obras concluídas</span>`;
-    btn.onclick = () => obrasSelectAno(ano);
+    btn.dataset.label = label;
+    const subtitulo = isAndamento
+      ? `${obras.length} obras em andamento`
+      : `${obras.length} obras concluídas`;
+    const icone = isAndamento ? '🚧' : '✅';
+    btn.innerHTML = `<span style="font-size:15px;font-weight:800">${icone} ${label.replace('OBRAS ','')}</span><span class="btn-label" style="font-size:11px;font-weight:500;white-space:nowrap">${subtitulo}</span>`;
+    btn.onclick = () => obrasSelectAno(label);
     btns.appendChild(btn);
   });
 }
 
-function obrasSelectAno(ano) {
-  obrasAnoAtivo = ano;
+function obrasSelectAno(label) {
+  obrasAnoAtivo = label;
+  const isAndamento = label.includes('ANDAMENTO');
 
-  // Atualizar botões
   document.querySelectorAll('#obras-ano-btns .lvc-ano-btn').forEach(b => {
-    const isAtivo = b.dataset.ano === ano;
+    const isAtivo = b.dataset.label === label;
     b.classList.toggle('active', isAtivo);
-    const obras = OBRAS_DATA[b.dataset.ano] || [];
-    b.querySelector('.btn-label').textContent = isAtivo ? 'Ativo' : obras.length + ' obras concluídas';
+    const obras = OBRAS_DATA[b.dataset.label] || [];
+    const isAnd = b.dataset.label.includes('ANDAMENTO');
+    b.querySelector('.btn-label').textContent = isAtivo ? 'Ativo'
+      : obras.length + (isAnd ? ' obras em andamento' : ' obras concluídas');
   });
 
-  renderObras(ano);
+  renderObras(label);
 }
 
-function renderObras(ano) {
+function renderObras(label) {
   if (!obrasLayerGroup) obrasLayerGroup = L.layerGroup().addTo(map);
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
   obrasLayerGroup.clearLayers();
   obrasMarkerGroup.clearLayers();
 
-  const obras = OBRAS_DATA[ano] || [];
+  const obras = OBRAS_DATA[label] || [];
   const geojsonFeatures = allFeatures; // features do shapefile principal
 
   let totalExt = 0;
@@ -3987,7 +4040,71 @@ function openObrasModal(obra) {
         <div class="obras-info-label">Data Final (Execução)</div>
         <div class="obras-info-value">${obra.data_fim || '—'}</div>
       </div>
+      ${obra.vigencia ? `<div class="obras-info-cell">
+        <div class="obras-info-label">Vigência do Contrato</div>
+        <div class="obras-info-value">${obra.vigencia}</div>
+      </div>` : ''}
+      ${obra.previsao_conclusao ? `<div class="obras-info-cell">
+        <div class="obras-info-label">Previsão de Conclusão</div>
+        <div class="obras-info-value">${obra.previsao_conclusao}</div>
+      </div>` : ''}
     </div>`;
+
+  // ── Campos exclusivos de Obras em Andamento ──
+  if (obra.isAndamento) {
+    bodyHTML += `<div class="obras-section-title">📊 Situação Financeira</div>
+    <div class="obras-info-grid">
+      <div class="obras-info-cell full">
+        <div class="obras-info-label">Valor do Contrato</div>
+        <div class="obras-info-value money">${obra.valor || '—'}</div>
+      </div>
+      <div class="obras-info-cell">
+        <div class="obras-info-label">Total Empenhado</div>
+        <div class="obras-info-value">${obra.total_empenhado || '—'}</div>
+      </div>
+      <div class="obras-info-cell">
+        <div class="obras-info-label">Status Financeiro</div>
+        <div class="obras-info-value">${obra.status_financeiro || '—'}</div>
+      </div>
+      <div class="obras-info-cell">
+        <div class="obras-info-label">Saldo do Contrato</div>
+        <div class="obras-info-value">${obra.saldo_contrato || '—'}</div>
+      </div>
+      <div class="obras-info-cell">
+        <div class="obras-info-label">Previsão 2025</div>
+        <div class="obras-info-value">${obra.previsao_2025 || '—'}</div>
+      </div>
+    </div>`;
+
+    if (obra.empregos_dir || obra.empregos_ind) {
+      bodyHTML += `<div class="obras-section-title">👷 Empregos Gerados</div>
+      <div class="obras-info-grid">
+        <div class="obras-info-cell">
+          <div class="obras-info-label">Empregos Diretos</div>
+          <div class="obras-info-value big">${obra.empregos_dir || '—'}</div>
+        </div>
+        <div class="obras-info-cell">
+          <div class="obras-info-label">Empregos Indiretos</div>
+          <div class="obras-info-value big">${obra.empregos_ind || '—'}</div>
+        </div>
+      </div>`;
+    }
+
+    if (obra.fiscal) {
+      bodyHTML += `<div class="obras-section-title">🔍 Fiscal da Obra</div>
+      <div class="obras-info-grid">
+        <div class="obras-info-cell full">
+          <div class="obras-info-label">Responsável Técnico</div>
+          <div class="obras-info-value">${obra.fiscal}</div>
+        </div>
+      </div>`;
+    }
+
+    if (obra.interferencia) {
+      bodyHTML += `<div class="obras-section-title">⚠️ Interferências</div>
+      <div class="obras-obs-box" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">⚠️ ${obra.interferencia}</div>`;
+    }
+  }`;
 
   if (obra.coordLat && obra.coordLng) {
     bodyHTML += `<div class="obras-section-title">📍 Localização Pontual</div>
