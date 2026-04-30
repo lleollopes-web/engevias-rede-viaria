@@ -1765,7 +1765,7 @@ function _drawGrayBase(layerGroup, sresComDado) {
     const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
     const isFederal = (f.properties.jurisdicao || '').includes('FEDERAL');
     L.polyline(coords, {
-      color: '#b0b8c4',
+      color: '#67e8f9',
       weight: isFederal ? 3 : 1.5,
       opacity: 0.45,
       smoothFactor: 1,
@@ -3218,7 +3218,7 @@ function renderRecuperacao() {
     const grayCoords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
     const isFed = (feat.properties.jurisdicao||'').includes('FEDERAL');
     L.polyline(grayCoords, {
-      color: '#b0b8c4', weight: isFed ? 3 : 1.5, opacity: 0.45,
+      color: '#67e8f9', weight: isFed ? 3 : 1.5, opacity: 0.45,
       smoothFactor: 1, interactive: false,
     }).addTo(recLayerGroup);
   });
@@ -3917,7 +3917,7 @@ function renderObrasAtivos() {
     if (sresComObra.has(sre)) return; // vai ser desenhado colorido depois
     if (!f.geometry) return;
     const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-    L.polyline(coords, { color: '#94a3b8', weight: 2, opacity: 0.5, smoothFactor: 1 })
+    L.polyline(coords, { color: '#67e8f9', weight: 2, opacity: 0.5, smoothFactor: 1 })
       .addTo(obrasLayerGroup);
   });
 
@@ -3998,7 +3998,7 @@ function renderObrasAtivos() {
         const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
         const line = L.polyline(coords, { color, weight: 5, opacity: 0.9, smoothFactor: 1 });
         const hitLine = L.polyline(coords, { color: 'transparent', weight: 14, opacity: 0 });
-        hitLine.on('click', () => openObrasModal(obra));
+        hitLine.on('click', () => { marcarCliqueEmLinha(); fecharCoordPopup(); openObrasModal(obra); });
         hitLine.on('mouseover', function() {
           line.setStyle({ weight: 7, opacity: 1 });
           this.getElement() && (this.getElement().style.cursor = 'pointer');
@@ -4045,7 +4045,7 @@ function openObrasModal(obra) {
   const color = obrasGetColor(obra.tipo);
 
   // Header
-  document.getElementById('obras-modal-num').textContent = `OBRA Nº ${obra.num} · ${obra.ano}`;
+  document.getElementById('obras-modal-num').textContent = `OBRA Nº ${obra.num} · ${obra.label || obra.ano || ''}`;
   document.getElementById('obras-modal-title').textContent = obra.descricao || obra.rodovia;
 
   // Badges
@@ -4243,10 +4243,10 @@ function openObrasModal(obra) {
   document.getElementById('obras-modal').classList.add('open');
 }
 
-}
-
 function closeObrasModal() {
   document.getElementById('obras-modal').classList.remove('open');
+}
+
 }
 
 function destacarSRE(sre) {
