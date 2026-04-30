@@ -4045,7 +4045,13 @@ function renderObrasAtivos() {
           L.DomEvent.stopPropagation(e);
           marcarCliqueEmLinha();
           fecharCoordPopup();
-          openObrasModal(obra);
+          console.log('CLIQUE OBRA ANUAL:', obra.num, obra.label, obra.isAndamento, obra.descricao);
+          try {
+            openObrasModal(obra);
+          } catch(err) {
+            console.error('ERRO openObrasModal:', err.message, err.stack);
+            alert('Erro: ' + err.message);
+          }
         });
         hitLine.on('mouseover', function() {
           line.setStyle({ weight: 7, opacity: 1 });
