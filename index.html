@@ -1891,8 +1891,13 @@ function _showAllGray() {
 }
 
 function _hideGrayLayer() {
-  // Apenas ocultar todas as linhas (mantém no mapa para performance)
+  // Ocultar todas as linhas cyan imediatamente
+  if (!_grayLayerItems.length) return;
   _grayLayerItems.forEach(l => l.setStyle({ opacity: 0 }));
+  // Fechar painel de info se estava mostrando info de cyan
+  if (document.getElementById('info-panel').classList.contains('active')) {
+    // Só fechar se o modo mudou — deixar o close normal cuidar
+  }
 }
 
 function renderIRI() {
@@ -3614,6 +3619,7 @@ function setModo(modo) {
   document.getElementById('segments-list').style.display = 'none';
   document.getElementById('list-header').style.display = 'none';
   document.getElementById('juris-filters').style.display = 'none';
+  _hideGrayLayer(); // limpar cyan ao trocar de modo
   layerGroup.clearLayers();
   if (lvcLayerGroup) lvcLayerGroup.clearLayers();
   if (iriLayerGroup) iriLayerGroup.clearLayers();
