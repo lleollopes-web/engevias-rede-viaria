@@ -4298,6 +4298,7 @@ function openObrasModal(obra) {
       bodyHTML += `<div class="obras-section-title">⚠️ Interferências</div>
       <div class="obras-obs-box" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">⚠️ ${obra.interferencia}</div>`;
     }
+  } // fecha if(obra.isAndamento)
 
   if (obra.coordLat && obra.coordLng) {
     bodyHTML += `<div class="obras-section-title">📍 Localização Pontual</div>
@@ -4333,8 +4334,6 @@ function openObrasModal(obra) {
 
   document.getElementById('obras-modal-body').innerHTML = bodyHTML;
   document.getElementById('obras-modal').classList.add('open');
-}
-
 }
 
 function closeObrasModal() {
