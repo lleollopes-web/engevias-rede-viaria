@@ -1331,13 +1331,11 @@ async function initApp() {
       document.getElementById('search-input').value = '';
       applyFilters();
     }
-    // Mostrar popup de coordenadas se clicou em área vazia (não numa linha)
-    // Usamos setTimeout para deixar os handlers das linhas rodarem primeiro
+    // Popup de coordenadas só no modo Situação Geral, e só se não clicou em linha
     if (currentModo === 'jurisdicao') {
       setTimeout(() => {
         if (!_clicouEmLinha) {
           fecharCoordPopup();
-          // Calcular posição do clique na tela
           const containerPt = map.latLngToContainerPoint(e.latlng);
           const mapDiv = document.getElementById('map').getBoundingClientRect();
           mostrarCoordPopup(
@@ -1349,7 +1347,9 @@ async function initApp() {
         _clicouEmLinha = false;
       }, 20);
     } else {
+      // Em outros modos: fechar coord popup se aberto, nada mais
       fecharCoordPopup();
+      _clicouEmLinha = false;
     }
   });
 
@@ -3934,17 +3934,31 @@ function _obrasDesenharSemLocalizacao(obra) {
 }
 
 function renderObrasAtivos() {
-  if (!obrasLayerGroup) {
-    obrasLayerGroup = L.layerGroup().addTo(map);
-  }
+  if (!obrasLayerGroup) obrasLayerGroup = L.layerGroup().addTo(map);
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
   obrasLayerGroup.clearLayers();
   obrasMarkerGroup.clearLayers();
 
-  // Juntar todas as obras dos labels ativos
+  // Criar panes por label com z-index crescente
+  // Em Andamento fica ABAIXO dos anos concluídos
+  const labelOrder = [];
+  // Primeiro Em Andamento (mais abaixo), depois anos (mais acima)
+  obrasAtivos.forEach(l => { if (l.includes('ANDAMENTO')) labelOrder.push(l); });
+  obrasAtivos.forEach(l => { if (!l.includes('ANDAMENTO')) labelOrder.push(l); });
+
+  labelOrder.forEach((label, idx) => {
+    const paneName = 'obrasPane_' + idx;
+    if (!map.getPane(paneName)) {
+      map.createPane(paneName);
+      map.getPane(paneName).style.zIndex = 651 + idx;
+      map.getPane(paneName).style.pointerEvents = 'auto';
+    }
+  });
+
+  // Juntar obras mantendo a ordem: Em Andamento primeiro, anos depois
   const todasObras = [];
-  obrasAtivos.forEach(label => {
-    (OBRAS_DATA[label] || []).forEach(o => todasObras.push({...o, _label: label}));
+  labelOrder.forEach(label => {
+    (OBRAS_DATA[label] || []).forEach(o => todasObras.push({...o, _label: label, _pane: 'obrasPane_' + labelOrder.indexOf(label)}));
   });
 
   const geojsonFeatures = allFeatures;
@@ -4037,13 +4051,14 @@ function renderObrasAtivos() {
         const feat = geojsonFeatures.find(f => f.properties.name === sre || f.properties.id === sre);
         if (!feat || !feat.geometry) return;
         const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
+        const paneName = obra._pane || 'obrasPane';
         const line = L.polyline(coords, {
           color, weight: 6, opacity: 0.9, smoothFactor: 1,
           interactive: true, bubblingMouseEvents: false,
-          className: 'obras-hit', pane: 'obrasPane'
+          className: 'obras-hit', pane: paneName
         });
         line.on('click', (e) => {
-          L.DomEvent.stopPropagation(e);
+          L.DomEvent.stop(e); // para propagação DOM E Leaflet
           marcarCliqueEmLinha();
           fecharCoordPopup();
           openObrasModal(obra);
