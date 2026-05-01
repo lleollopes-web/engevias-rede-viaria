@@ -1373,6 +1373,24 @@ async function initApp() {
       }
     } else {
       fecharCoordPopup();
+      // Se clicou numa linha cyan (não numa linha colorida), mostrar info do segmento
+      if (!_clicouEmLinha && _grayLayerItems.length > 0) {
+        const pt = e.latlng;
+        const zoom = map.getZoom();
+        const LIMIAR = zoom >= 12 ? 300 : zoom >= 10 ? 800 : zoom >= 8 ? 2000 : 4000;
+        let melhorItem = null, melhorDist = Infinity;
+        _grayLayerItems.forEach(item => {
+          if (!item._coords || item.options.opacity === 0) return;
+          const coords = item._coords;
+          for (let i = 0; i < coords.length - 1; i++) {
+            const d = _distPtSegmento(pt, L.latLng(coords[i]), L.latLng(coords[i+1]));
+            if (d < melhorDist) { melhorDist = d; melhorItem = item; }
+          }
+        });
+        if (melhorDist < LIMIAR && melhorItem) {
+          showInfoSemDados(melhorItem._props);
+        }
+      }
       _clicouEmLinha = false;
     }
   });
@@ -1837,7 +1855,7 @@ function _buildGrayLayer() {
   if (!map.getPane('grayPane')) {
     map.createPane('grayPane');
     map.getPane('grayPane').style.zIndex = 200; // abaixo de overlayPane (400)
-    map.getPane('grayPane').style.pointerEvents = 'auto';
+    map.getPane('grayPane').style.pointerEvents = 'none'; // nunca intercepta cliques
   }
   _grayLayer = L.layerGroup();
   allFeatures.forEach(f => {
@@ -1845,25 +1863,12 @@ function _buildGrayLayer() {
     const isFed = (f.properties.jurisdicao || '').toUpperCase().includes('FEDERAL');
     const line = L.polyline(
       f.geometry.coordinates.map(c => [c[1], c[0]]),
-      { color: '#06b6d4', weight: isFed ? 5 : 3, opacity: 0, smoothFactor: 2,
-        interactive: true, bubblingMouseEvents: false, pane: 'grayPane' }
+      { color: '#06b6d4', weight: isFed ? 3 : 1.5, opacity: 0, smoothFactor: 2,
+        interactive: false, pane: 'grayPane' }
     );
     line._sreKey = f.properties.name || f.properties.id;
     line._props = f.properties;
-    line.on('click', function(e) {
-      L.DomEvent.stop(e);
-      showInfoSemDados(this._props);
-    });
-    line.on('mouseover', function() {
-      if (this.options.opacity > 0) {
-        this.setStyle({ weight: isFed ? 7 : 5 });
-        const el = this.getElement();
-        if (el) el.style.cursor = 'pointer';
-      }
-    });
-    line.on('mouseout', function() {
-      this.setStyle({ weight: isFed ? 5 : 3 });
-    });
+    line._coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
     line.addTo(_grayLayer);
     _grayLayerItems.push(line);
   });
