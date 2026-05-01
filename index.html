@@ -1518,6 +1518,26 @@ function updateStats(vis) {
   document.getElementById('stat-ext').textContent=ext.toLocaleString('pt-BR',{maximumFractionDigits:1});
 }
 
+function showInfoSemDados(p) {
+  document.getElementById('info-title').textContent = p.rodovia || '—';
+  document.getElementById('info-id').textContent = p.name || p.id || '';
+  const rows = [
+    ['Situação', '<span style="font-weight:700;color:#94a3b8">Sem dados cadastrados</span>'],
+    ['Tipo de Pavimento', p.tipo_pav || '—'],
+    ['KM Inicial', p.km_ini || '—'],
+    ['KM Final', p.km_fim || '—'],
+    ['Extensão', p.extensao ? p.extensao + ' km' : '—'],
+    ['Início', p.desc_ini || '—'],
+    ['Fim', p.desc_fim || '—'],
+    ['Situação Geral', p.jurisdicao || '—'],
+  ];
+  const aviso = '<div style="background:#e0f2fe;border:1px solid #7dd3fc;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#0369a1;display:flex;align-items:center;gap:6px;">⚠️ Trecho sem informações cadastradas</div>';
+  document.getElementById('info-content').innerHTML = aviso + rows.map(([k,v]) =>
+    `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`
+  ).join('');
+  document.getElementById('info-panel').classList.add('active');
+}
+
 function showInfo(p) {
   const cfg=SITUACAO_CONFIG[p.situacao]||SITUACAO_CONFIG.PAV;
   const jcfg=getLineStyle(p);
@@ -1817,7 +1837,7 @@ function _buildGrayLayer() {
   if (!map.getPane('grayPane')) {
     map.createPane('grayPane');
     map.getPane('grayPane').style.zIndex = 200; // abaixo de overlayPane (400)
-    map.getPane('grayPane').style.pointerEvents = 'none'; // nunca intercepta cliques
+    map.getPane('grayPane').style.pointerEvents = 'auto';
   }
   _grayLayer = L.layerGroup();
   allFeatures.forEach(f => {
@@ -1825,10 +1845,25 @@ function _buildGrayLayer() {
     const isFed = (f.properties.jurisdicao || '').toUpperCase().includes('FEDERAL');
     const line = L.polyline(
       f.geometry.coordinates.map(c => [c[1], c[0]]),
-      { color: '#06b6d4', weight: isFed ? 3 : 1.5, opacity: 0, smoothFactor: 2,
-        interactive: false, pane: 'grayPane' }
+      { color: '#06b6d4', weight: isFed ? 5 : 3, opacity: 0, smoothFactor: 2,
+        interactive: true, bubblingMouseEvents: false, pane: 'grayPane' }
     );
     line._sreKey = f.properties.name || f.properties.id;
+    line._props = f.properties;
+    line.on('click', function(e) {
+      L.DomEvent.stop(e);
+      showInfoSemDados(this._props);
+    });
+    line.on('mouseover', function() {
+      if (this.options.opacity > 0) {
+        this.setStyle({ weight: isFed ? 7 : 5 });
+        const el = this.getElement();
+        if (el) el.style.cursor = 'pointer';
+      }
+    });
+    line.on('mouseout', function() {
+      this.setStyle({ weight: isFed ? 5 : 3 });
+    });
     line.addTo(_grayLayer);
     _grayLayerItems.push(line);
   });
