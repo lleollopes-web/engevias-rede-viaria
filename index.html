@@ -4058,10 +4058,24 @@ function renderObrasAtivos() {
           className: 'obras-hit', pane: paneName
         });
         line.on('click', (e) => {
-          L.DomEvent.stop(e); // para propagação DOM E Leaflet
+          L.DomEvent.stop(e);
           marcarCliqueEmLinha();
           fecharCoordPopup();
           openObrasModal(obra);
+        });
+        // Garantir pointer-events via DOM após adição ao mapa
+        line.on('add', function() {
+          const el = this.getElement();
+          if (el) {
+            el.style.pointerEvents = 'stroke';
+            el.style.cursor = 'pointer';
+            // Listener DOM direto como backup
+            el.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              marcarCliqueEmLinha();
+              openObrasModal(obra);
+            });
+          }
         });
         line.on('mouseover', function() {
           this.setStyle({ weight: 9, opacity: 1 });
