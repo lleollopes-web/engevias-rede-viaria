@@ -1354,7 +1354,9 @@ async function initApp() {
         const pt = e.latlng;
         let melhorObra = null;
         let melhorDist = Infinity;
-        const LIMIAR_M = 800; // metros de tolerância
+        // Limiar adaptativo baseado no zoom atual
+        const zoom = map.getZoom();
+        const LIMIAR_M = zoom >= 12 ? 200 : zoom >= 10 ? 500 : zoom >= 8 ? 1500 : 3000;
         _obrasRenderizadas.forEach(({ obra, coords }) => {
           // Distância mínima do ponto a qualquer segmento da polyline
           for (let i = 0; i < coords.length - 1; i++) {
@@ -4093,26 +4095,6 @@ function renderObrasAtivos() {
           interactive: true, bubblingMouseEvents: false,
           className: 'obras-hit', pane: paneName
         });
-        line.on('click', (e) => {
-          L.DomEvent.stop(e);
-          marcarCliqueEmLinha();
-          fecharCoordPopup();
-          openObrasModal(obra);
-        });
-        // Garantir pointer-events via DOM após adição ao mapa
-        line.on('add', function() {
-          const el = this.getElement();
-          if (el) {
-            el.style.pointerEvents = 'stroke';
-            el.style.cursor = 'pointer';
-            // Listener DOM direto como backup
-            el.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              marcarCliqueEmLinha();
-              openObrasModal(obra);
-            });
-          }
-        });
         line.on('mouseover', function() {
           this.setStyle({ weight: 9, opacity: 1 });
           const el = this.getElement();
@@ -4256,15 +4238,11 @@ function openObrasModal(obra) {
         <div class="obras-info-label">Data Final (Execução)</div>
         <div class="obras-info-value">${obra.data_fim || '—'}</div>
       </div>
-      ${obra.vigencia ? `<div class="obras-info-cell">
-        <div class="obras-info-label">Vigência do Contrato</div>
-        <div class="obras-info-value">${obra.vigencia}</div>
-      </div>` : ''}
-      ${obra.previsao_conclusao ? `<div class="obras-info-cell">
-        <div class="obras-info-label">Previsão de Conclusão</div>
-        <div class="obras-info-value">${obra.previsao_conclusao}</div>
-      </div>` : ''}
     </div>`;
+
+  if (obra.vigencia) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Vigência do Contrato</div><div class="obras-info-value">' + obra.vigencia + '</div></div>';
+  if (obra.previsao_conclusao) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Previsão de Conclusão</div><div class="obras-info-value">' + obra.previsao_conclusao + '</div></div>';
+  bodyHTML += '</div>';
 
   // ── Campos exclusivos de Obras em Andamento ──
   if (obra.isAndamento) {
