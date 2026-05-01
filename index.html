@@ -3695,31 +3695,21 @@ async function carregarObrasXLSX() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-
     const resultado = {};
 
     wb.SheetNames.forEach(sheetName => {
-      // Extrair ano ou label da aba
-      const label = sheetName.trim(); // ex: "OBRAS 2023", "OBRAS EM ANDAMENTO"
-      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: null });
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      const isAndamento = sheetName.includes('ANDAMENTO');
 
-      // Detectar linha de cabeçalho (linha com "Nº" na col A)
-      let headerRow = -1;
-      for (let i = 0; i < Math.min(rows.length, 10); i++) {
-        if (rows[i][0] === 'Nº' || String(rows[i][0]).trim() === 'Nº') { headerRow = i; break; }
-      }
-      if (headerRow < 0) return;
-
-      const headers = rows[headerRow]; // array de cabeçalhos
-      const isAndamento = label.includes('ANDAMENTO');
-
-      // Mapear colunas por nome do cabeçalho
-      const col = {};
-      headers.forEach((h, i) => {
-        if (!h) return;
-        const k = String(h).trim().replace(/\n/g,' ');
-        col[k] = i;
-      });
+      // Estrutura fixa conhecida:
+      // Linha 0: título
+      // Linha 1: vazia
+      // Linha 2: cabeçalho (Nº, Tipo, ROD., ...)
+      // Linha 3: seção "OBRAS CONCLUÍDAS XXXX" (só nas anuais) OU dados (andamento)
+      // Linha 4+: dados (anuais) / Linha 3+: dados (andamento)
+      const dataStartRow = isAndamento ? 3 : 4;
+      const sreColIdx    = isAndamento ? 30 : 20;
 
       const fmtDate = (v) => {
         if (!v) return '';
@@ -3740,23 +3730,27 @@ async function carregarObrasXLSX() {
         return pct.toFixed(pct % 1 === 0 ? 0 : 1) + '%';
       };
       const clean = (v) => (v !== null && v !== undefined) ? String(v).trim().replace(/\n/g, ' ') : '';
-      const isCoord = (v) => /^\s*-?\d+[\.,]\d+°?\s*$/.test(String(v));
+      const isCoord = (v) => {
+        const s = String(v).replace(/[°\s]/g,'').replace(',','.');
+        const n = parseFloat(s);
+        return !isNaN(n) && String(s).includes('.') && n > -90 && n < 90;
+      };
 
       const obras = [];
-      for (let r = headerRow + 1; r < rows.length; r++) {
+      for (let r = dataStartRow; r < rows.length; r++) {
         const row = rows[r];
-        if (!row[0]) continue;
+        if (!row || row[0] === null || row[0] === undefined) continue;
         const num = parseInt(row[0]);
-        if (isNaN(num)) continue;
+        if (isNaN(num)) continue; // pula linhas de seção e totais
 
-        // Detectar SREs e coordenadas a partir da coluna "LISTA DE SRES"
-        const sreColIdx = isAndamento ? 30 : 20; // fixo: anuais col 20, andamento col 30
+        // SREs ou coordenadas a partir de sreColIdx
         let sres = [], coordLat = null, coordLng = null;
         const u0 = row[sreColIdx] != null ? String(row[sreColIdx]).trim() : '';
-        const u1 = row[sreColIdx+1] != null ? String(row[sreColIdx+1]).trim() : '';
+        const u1 = row[sreColIdx + 1] != null ? String(row[sreColIdx + 1]).trim() : '';
+
         if (u0 && isCoord(u0) && u1 && isCoord(u1)) {
-          coordLat = parseFloat(u0.replace(/[°]/g,'').replace(',','.'));
-          coordLng = parseFloat(u1.replace(/[°]/g,'').replace(',','.'));
+          coordLat = parseFloat(u0.replace(/[°]/g, '').replace(',', '.'));
+          coordLng = parseFloat(u1.replace(/[°]/g, '').replace(',', '.'));
         } else {
           for (let c = sreColIdx; c < row.length; c++) {
             const v = row[c] != null ? String(row[c]).trim() : '';
@@ -3766,71 +3760,69 @@ async function carregarObrasXLSX() {
 
         let obra;
         if (isAndamento) {
-          // Aba "OBRAS EM ANDAMENTO" — colunas diferentes
           obra = {
             num,
-            tipo:           clean(row[col['Tipo'] ?? 1]),
-            rodovia:        clean(row[col['ROD.'] ?? 2]),
-            descricao:      clean(row[col['DESCRIÇÃO'] ?? 3]),
-            fiscal:         clean(row[col['FISCAL'] ?? 4]),
-            extensao:       clean(row[col['EXT. (KM)'] ?? 5]),
-            municipio:      clean(row[col['MUNICÍPIO'] ?? 6]),
-            macrorregiao:   clean(row[col['MACRORREGIÃO'] ?? 7]),
-            distrito:       clean(row[col['DISTRITO OPERACIONAL'] ?? 8]),
-            data_inicio:    fmtDate(row[col['DATA INÍCIO\n(OS)'] ?? col['DATA INÍCIO (OS)'] ?? 9]),
-            data_fim:       fmtDate(row[col['DATA FINAL\n(EXECUÇÃO)'] ?? col['DATA FINAL (EXECUÇÃO)'] ?? 10]),
-            vigencia:       fmtDate(row[col['VIGÊNCIA DO \nCONTRATO'] ?? col['VIGÊNCIA DO CONTRATO'] ?? 11]),
-            previsao_conclusao: fmtDate(row[col['PREVISÃO DE CONCLUSÃO'] ?? 12]),
-            situacao:       clean(row[col['SITUAÇÃO'] ?? 13]),
-            empregos_dir:   clean(row[col['EMPREGOS DIRETOS'] ?? 14]),
-            empregos_ind:   clean(row[col['EMPREGOS INDIRETOS'] ?? 15]),
-            valor:          fmtVal(row[col['VALOR DO CONTRATO (R$)'] ?? 16]),
-            status_fisico:  fmtPct(row[col['STATUS\nFÍSICO \n(%)'] ?? col['STATUS FÍSICO (%)'] ?? 17]),
-            total_empenhado: fmtVal(row[col['TOTAL EMPENHADO\n(R$)'] ?? 18]),
-            status_financeiro: fmtPct(row[col['STATUS\nFINANCEIRO (%)'] ?? 19]),
-            saldo_contrato: fmtVal(row[col['SALDO DO CONTRATO\n(R$)'] ?? 20]),
-            previsao_2025:  fmtVal(row[col['PREVISÃO PARA 2025 \n(R$)'] ?? 21]),
-            contrato:       clean(row[col['CONTRATOS'] ?? 22]),
-            mapp:           clean(row[col['MAPP'] ?? 23]),
-            sit_mapp:       clean(row[col['SITUAÇÃO'] ?? 24]),
-            tipo_pav:       clean(row[col['TIPO DE PAVIMENTO'] ?? 25]),
-            empresa:        clean(row[col['EMPRESAS'] ?? 26]),
-            observacoes:    clean(row[col['OBSERVAÇÕES'] ?? 27]),
-            interferencia:  clean(row[col['INTERFERÊNCIA'] ?? 28]),
-            evento:         clean(row[col['EVENTO POLÍTICO'] ?? 29]),
+            tipo:               clean(row[1]),
+            rodovia:            clean(row[2]),
+            descricao:          clean(row[3]),
+            fiscal:             clean(row[4]),
+            extensao:           clean(row[5]),
+            municipio:          clean(row[6]),
+            macrorregiao:       clean(row[7]),
+            distrito:           clean(row[8]),
+            data_inicio:        fmtDate(row[9]),
+            data_fim:           fmtDate(row[10]),
+            vigencia:           fmtDate(row[11]),
+            previsao_conclusao: fmtDate(row[12]),
+            situacao:           clean(row[13]),
+            empregos_dir:       clean(row[14]),
+            empregos_ind:       clean(row[15]),
+            valor:              fmtVal(row[16]),
+            status_fisico:      fmtPct(row[17]),
+            total_empenhado:    fmtVal(row[18]),
+            status_financeiro:  fmtPct(row[19]),
+            saldo_contrato:     fmtVal(row[20]),
+            previsao_2025:      fmtVal(row[21]),
+            contrato:           clean(row[22]),
+            mapp:               clean(row[23]),
+            sit_mapp:           clean(row[24]),
+            tipo_pav:           clean(row[25]),
+            empresa:            clean(row[26]),
+            observacoes:        clean(row[27]),
+            interferencia:      clean(row[28]),
+            evento:             clean(row[29]),
             sres, coordLat, coordLng,
-            label, isAndamento: true,
+            label: sheetName, isAndamento: true,
           };
         } else {
-          // Abas de obras concluídas (2023, 2024, 2025)
           obra = {
             num,
-            tipo:         clean(row[col['Tipo'] ?? 1]),
-            rodovia:      clean(row[col['ROD.'] ?? 2]),
-            descricao:    clean(row[col['DESCRIÇÃO'] ?? 3]),
-            extensao:     clean(row[col['EXT. (KM)'] ?? 4]),
-            municipio:    clean(row[col['MUNICÍPIO'] ?? 5]),
-            macrorregiao: clean(row[col['MACRORREGIÃO'] ?? 6]),
-            distrito:     clean(row[col['DISTRITO OPERACIONAL'] ?? 7]),
-            data_inicio:  fmtDate(row[col['DATA INÍCIO\n(OS)'] ?? col['DATA INÍCIO (OS)'] ?? 8]),
-            data_fim:     fmtDate(row[col['DATA FINAL\n(EXECUÇÃO)'] ?? col['DATA FINAL (EXECUÇÃO)'] ?? 9]),
-            situacao:     clean(row[col['SITUAÇÃO'] ?? 10]),
-            valor:        fmtVal(row[col['VALOR DO CONTRATO (R$)'] ?? 11]),
-            status_fisico: fmtPct(row[col['STATUS\nFÍSICO \n(%)'] ?? col['STATUS FÍSICO (%)'] ?? 12]),
-            contrato:     clean(row[col['CONTRATOS'] ?? 13]),
-            mapp:         clean(row[col['MAPP'] ?? 14]),
-            sit_mapp:     clean(row[col['SITUAÇÃO'] ?? 15]),
-            tipo_pav:     clean(row[col['TIPO DE PAVIMENTO'] ?? 16]),
-            empresa:      clean(row[col['EMPRESAS'] ?? 17]),
-            observacoes:  clean(row[col['OBSERVAÇÕES'] ?? 18]),
-            evento:       clean(row[col['EVENTO POLÍTICO'] ?? 19]),
+            tipo:         clean(row[1]),
+            rodovia:      clean(row[2]),
+            descricao:    clean(row[3]),
+            extensao:     clean(row[4]),
+            municipio:    clean(row[5]),
+            macrorregiao: clean(row[6]),
+            distrito:     clean(row[7]),
+            data_inicio:  fmtDate(row[8]),
+            data_fim:     fmtDate(row[9]),
+            situacao:     clean(row[10]),
+            valor:        fmtVal(row[11]),
+            status_fisico: fmtPct(row[12]),
+            contrato:     clean(row[13]),
+            mapp:         clean(row[14]),
+            sit_mapp:     clean(row[15]),
+            tipo_pav:     clean(row[16]),
+            empresa:      clean(row[17]),
+            observacoes:  clean(row[18]),
+            evento:       clean(row[19]),
             sres, coordLat, coordLng,
-            label, isAndamento: false,
+            label: sheetName, isAndamento: false,
           };
         }
         obras.push(obra);
       }
-      resultado[label] = obras;
+      resultado[sheetName] = obras;
     });
 
     OBRAS_DATA = resultado;
