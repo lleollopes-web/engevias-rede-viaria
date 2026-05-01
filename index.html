@@ -4316,10 +4316,9 @@ function openObrasModal(obra) {
       </div>
     </div>`;
   } else if (obra.sres && obra.sres.length > 0) {
-    bodyHTML += `<div class="obras-section-title">Trechos (SREs) — ${obra.sres.length} segmento${obra.sres.length > 1 ? 's' : ''}</div>
-    <div class="obras-sre-list">
-      ${obra.sres.map(s => `<span class="obras-sre-tag" title="Clique para destacar no mapa" onclick="destacarSRE(\'${s}\')">${s}</span>`).join('')}
-    </div>`;
+    const nSeg = obra.sres.length;
+    const sreHTML = obra.sres.map(s => '<span class="obras-sre-tag" onclick="destacarSRE(\'' + s + '\')" title="Destacar no mapa">' + s + '</span>').join('');
+    bodyHTML += '<div class="obras-section-title">Trechos (SREs) — ' + nSeg + ' segmento' + (nSeg > 1 ? 's' : '') + '</div><div class="obras-sre-list">' + sreHTML + '</div>';
   }
 
   if (obra.observacoes) {
@@ -4335,6 +4334,7 @@ function openObrasModal(obra) {
   document.getElementById('obras-modal-body').innerHTML = bodyHTML;
   document.getElementById('obras-modal').classList.add('open');
 }
+
 }
 
 function closeObrasModal() {
