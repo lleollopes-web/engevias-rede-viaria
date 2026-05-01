@@ -1346,8 +1346,30 @@ async function initApp() {
         }
         _clicouEmLinha = false;
       }, 20);
+    } else if (currentModo === 'obras') {
+      fecharCoordPopup();
+      _clicouEmLinha = false;
+      // Detectar clique em obra por proximidade ao ponto clicado
+      if (_obrasRenderizadas.length > 0) {
+        const pt = e.latlng;
+        let melhorObra = null;
+        let melhorDist = Infinity;
+        const LIMIAR_M = 800; // metros de tolerância
+        _obrasRenderizadas.forEach(({ obra, coords }) => {
+          // Distância mínima do ponto a qualquer segmento da polyline
+          for (let i = 0; i < coords.length - 1; i++) {
+            const a = L.latLng(coords[i]);
+            const b = L.latLng(coords[i + 1]);
+            // Distância do ponto ao segmento
+            const d = _distPtSegmento(pt, a, b);
+            if (d < melhorDist) { melhorDist = d; melhorObra = obra; }
+          }
+        });
+        if (melhorDist < LIMIAR_M && melhorObra) {
+          openObrasModal(melhorObra);
+        }
+      }
     } else {
-      // Em outros modos: fechar coord popup se aberto, nada mais
       fecharCoordPopup();
       _clicouEmLinha = false;
     }
@@ -1764,6 +1786,18 @@ function iriSelectAno(ano) {
   }
 }
 
+
+// ── Distância de um ponto LatLng a um segmento LatLng A-B (em metros) ──
+function _distPtSegmento(pt, a, b) {
+  // Projeção do ponto no segmento usando coordenadas planas aproximadas
+  const dx = b.lat - a.lat, dy = b.lng - a.lng;
+  const len2 = dx*dx + dy*dy;
+  if (len2 === 0) return pt.distanceTo(a);
+  let t = ((pt.lat - a.lat)*dx + (pt.lng - a.lng)*dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const proj = L.latLng(a.lat + t*dx, a.lng + t*dy);
+  return pt.distanceTo(proj);
+}
 
 // ── Camada cyan base: pré-renderizada uma vez, reusada em todos os modos ──
 let _grayLayer = null;
@@ -3855,6 +3889,7 @@ function obrasGetColor(tipo) {
 }
 
 let obrasLayerGroup = null;
+let _obrasRenderizadas = []; // [{obra, coords[]}] para detecção de clique por proximidade
 let obrasAtivos = new Set(); // labels ativos (toggle multi-seleção)
 let obrasMarkerGroup = null;
 
@@ -3938,6 +3973,7 @@ function renderObrasAtivos() {
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
   obrasLayerGroup.clearLayers();
   obrasMarkerGroup.clearLayers();
+  _obrasRenderizadas = [];
 
   // Criar panes por label com z-index crescente
   // Em Andamento fica ABAIXO dos anos concluídos
@@ -4086,6 +4122,7 @@ function renderObrasAtivos() {
           this.setStyle({ weight: 6, opacity: 0.9 });
         });
         line.addTo(obrasLayerGroup);
+        _obrasRenderizadas.push({ obra, coords });
         linesAdded++;
       });
       // ── SREs listados mas nenhum encontrado no shapefile → ícone cinza ──
