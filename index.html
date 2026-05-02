@@ -407,9 +407,10 @@
   #obras-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   #obras-panel.active { display:flex; }
   .obras-ano-btns { display:flex; flex-direction:column; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
-  .obras-stats-bar { display:flex; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
-  .obras-stat-chip { display:flex; align-items:center; gap:4px; font-size:11px; color:var(--text3); background:var(--surface2); border:1px solid var(--border); padding:4px 10px; border-radius:20px; }
-  .obras-stat-chip strong { color:var(--text); font-size:13px; font-family:'Inter Tight',sans-serif; font-weight:700; }
+  .obras-stats-bar { display:flex; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); }
+  .obras-stat-chip { display:flex; flex-direction:column; align-items:center; flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:10px 8px; }
+  .obras-stat-chip .stat-num { font-size:22px; font-weight:800; font-family:'Inter Tight',sans-serif; color:var(--navy); line-height:1.1; }
+  .obras-stat-chip .stat-label { font-size:10px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; margin-top:2px; }
   .obras-legend { padding:10px 14px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:5px; }
   .obras-legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2); }
   .obras-legend-dot { width:18px; height:5px; border-radius:3px; flex-shrink:0; }
@@ -1195,9 +1196,14 @@
           <button onclick="obrasLimparFiltros()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text3);cursor:pointer;">✕ Limpar todos os filtros</button>
         </div>
         <div class="obras-stats-bar" id="obras-stats-bar" style="display:none;">
-          <div class="obras-stat-chip"><strong id="obras-stat-total">—</strong> obras</div>
-          <div class="obras-stat-chip"><strong id="obras-stat-ext">—</strong> km</div>
-          <div class="obras-stat-chip"><strong id="obras-stat-valor">—</strong></div>
+          <div class="obras-stat-chip">
+            <span class="stat-num" id="obras-stat-total">—</span>
+            <span class="stat-label">Obras</span>
+          </div>
+          <div class="obras-stat-chip">
+            <span class="stat-num" id="obras-stat-valor" style="font-size:16px;color:#16a34a;">—</span>
+            <span class="stat-label">Valor Total</span>
+          </div>
         </div>
         <div class="obras-legend" id="obras-legend" style="display:none;">
           <div class="sidebar-label" style="margin-bottom:6px">Tipo de Obra</div>
@@ -4137,10 +4143,9 @@ function renderObrasAtivos() {
   document.getElementById('obras-stats-bar').style.display = 'flex';
   document.getElementById('obras-legend').style.display = 'flex';
   document.getElementById('obras-stat-total').textContent = obras.length.toLocaleString('pt-BR');
-  document.getElementById('obras-stat-ext').textContent = totalExt.toLocaleString('pt-BR',{maximumFractionDigits:1});
   const vTotal = obras.reduce((s,o) => { const v=parseFloat(String(o.valor||'').replace('R$','').replace(/\./g,'').replace(',','.').trim()); return s+(isNaN(v)?0:v); }, 0);
-  const fmt = v => v>=1e9?'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi':v>=1e6?'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':'R$ '+v.toLocaleString('pt-BR',{maximumFractionDigits:0});
-  document.getElementById('obras-stat-valor').textContent = fmt(vTotal);
+  const valorFormatado = 'R$ ' + vTotal.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('obras-stat-valor').textContent = valorFormatado;
 }
 
 function _obrasDesenharPinCidade(obra, color, lat, lng) {
