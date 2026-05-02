@@ -389,6 +389,20 @@
   }
   .coord-copy-btn:hover { background:rgba(255,255,255,0.15); color:#fff; }
 
+  /* ===== PROGRAMA DE OBRAS — FILTROS TOGGLE ===== */
+  .obras-filter-section { padding:10px 14px; border-bottom:1px solid var(--border); }
+  .obras-filter-label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .obras-chips { display:flex; flex-wrap:wrap; gap:5px; }
+  .obras-chip {
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600;
+    border:1.5px solid var(--border); background:var(--surface2); color:var(--text2);
+    cursor:pointer; transition:all 0.15s; user-select:none; white-space:nowrap;
+  }
+  .obras-chip:hover { border-color:var(--teal); color:var(--teal); }
+  .obras-chip.active { background:var(--teal); border-color:var(--teal); color:#fff; }
+  .obras-chip.concluida { border-color:#16a34a; }
+  .obras-chip.concluida.active { background:#16a34a; border-color:#16a34a; }
+
   /* ===== OBRAS RODOVIÁRIAS ===== */
   #obras-panel { display:none; flex-direction:column; height:100%; overflow-y:auto; }
   #obras-panel.active { display:flex; }
@@ -1154,29 +1168,24 @@
           <button onclick="obrasRecarregar()" title="Recarregar planilha do GitHub" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">🔄</button>
         </div>
         <div id="obras-load-status" style="display:none;padding:10px 16px;font-size:12px;color:#dc2626;background:#fef2f2;border-bottom:1px solid #fecaca;"></div>
-        <!-- Filtros do Programa de Obras -->
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
-          <div>
-            <div class="obras-info-label" style="margin-bottom:4px">SETOR</div>
-            <select id="obras-filter-setor" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
-              <option value="">Todos os setores</option>
-              <option value="RODOVIAS">Rodovias</option>
-              <option value="EDIFICAÇÕES">Edificações</option>
-            </select>
+        <!-- Filtros toggle do Programa de Obras -->
+        <div class="obras-filter-section">
+          <div class="obras-filter-label">Setor</div>
+          <div class="obras-chips" id="obras-chips-setor">
+            <span class="obras-chip" data-filter="setor" data-val="RODOVIAS" onclick="obrasToggleChip(this)">🛣️ Rodovias</span>
+            <span class="obras-chip" data-filter="setor" data-val="EDIFICAÇÕES" onclick="obrasToggleChip(this)">🏗️ Edificações</span>
           </div>
-          <div>
-            <div class="obras-info-label" style="margin-bottom:4px">TIPO DE OBRA</div>
-            <select id="obras-filter-tipo" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
-              <option value="">Todos os tipos</option>
-            </select>
-          </div>
-          <div>
-            <div class="obras-info-label" style="margin-bottom:4px">STATUS</div>
-            <select id="obras-filter-status" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
-              <option value="">Todos os status</option>
-            </select>
-          </div>
-          <button onclick="obrasLimparFiltros()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text3);cursor:pointer;">✕ Limpar filtros</button>
+        </div>
+        <div class="obras-filter-section">
+          <div class="obras-filter-label">Tipo de Obra</div>
+          <div class="obras-chips" id="obras-chips-tipo"></div>
+        </div>
+        <div class="obras-filter-section">
+          <div class="obras-filter-label">Status</div>
+          <div class="obras-chips" id="obras-chips-status"></div>
+        </div>
+        <div style="padding:8px 14px;border-bottom:1px solid var(--border);">
+          <button onclick="obrasLimparFiltros()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text3);cursor:pointer;">✕ Limpar todos os filtros</button>
         </div>
         <div class="obras-stats-bar" id="obras-stats-bar" style="display:none;">
           <div class="obras-stat-chip"><strong id="obras-stat-total">—</strong> obras</div>
@@ -3791,32 +3800,80 @@ const OBRAS_XLSX_URL = 'https://raw.githubusercontent.com/lleollopes-web/engevia
 // Coordenadas dos municípios do Ceará (centróides)
 const MUNICIPIOS_CE = {"FORTALEZA":[-3.7172,-38.5431],"JUAZEIRO DO NORTE":[-7.2136,-39.3153],"CRATO":[-7.2336,-39.4094],"SOBRAL":[-3.6883,-40.3497],"MARACANAÚ":[-3.7789,-38.6258],"CAUCAIA":[-3.7411,-38.6531],"ITAPIPOCA":[-3.4933,-39.5786],"IGUATU":[-6.3593,-39.2986],"QUIXADÁ":[-4.9704,-39.0152],"CRATEÚS":[-5.1769,-40.6722],"TIANGUÁ":[-3.7294,-40.9929],"LIMOEIRO DO NORTE":[-5.1447,-38.0992],"RUSSAS":[-4.9393,-37.9753],"ARACATI":[-4.5606,-37.7703],"PACATUBA":[-3.9869,-38.6131],"QUIXERAMOBIM":[-5.1986,-39.2858],"TAUÁ":[-6.0017,-40.2919],"CAMOCIM":[-2.9019,-40.8419],"ACARAÚ":[-2.8853,-40.1203],"CANINDÉ":[-4.3558,-39.3139],"BOA VIAGEM":[-5.1236,-39.7283],"SENADOR POMPEU":[-5.5825,-39.3722],"BATURITÉ":[-4.3286,-38.8825],"REDENÇÃO":[-4.2272,-38.7261],"AURORA":[-6.9472,-38.9733],"BARBALHA":[-7.31,-39.3033],"BREJO SANTO":[-7.4917,-38.9839],"MISSÃO VELHA":[-7.2481,-39.1428],"ABAIARA":[-7.3556,-39.0439],"MILAGRES":[-6.9181,-38.9339],"ARARENDÁ":[-4.7467,-40.8358],"PACOTI":[-4.2258,-38.9294],"ARACOIABA":[-4.3628,-38.8133],"ITAITINGA":[-3.9728,-38.5256],"AQUIRAZ":[-3.8978,-38.3928],"HORIZONTE":[-4.1008,-38.4978],"PINDORETAMA":[-4.0075,-38.2947],"EUSÉBIO":[-3.8892,-38.4536],"MARANGUAPE":[-3.8889,-38.6839],"ITAPAJÉ":[-3.6847,-39.5839],"PARAIPABA":[-3.4386,-39.1508],"UMIRIM":[-3.6733,-39.3453],"TURURU":[-3.4611,-39.4628],"SÃO GONÇALO DO AMARANTE":[-3.605,-38.9747],"PARACURU":[-3.4108,-39.0325],"TRAIRI":[-3.2769,-39.2694],"AMONTADA":[-3.3647,-39.8264],"ITAREMA":[-2.9222,-39.9133],"ACARAPE":[-4.2222,-38.7064],"BARREIRA":[-4.2856,-38.6511],"GUAIÚBA":[-4.0569,-38.6447],"OCARA":[-4.4853,-38.5803],"CHOROZINHO":[-4.2939,-38.4978],"CASCAVEL":[-4.1358,-38.2358],"FORTIM":[-4.4489,-37.7961],"JAGUARUANA":[-4.8361,-37.7822],"MORADA NOVA":[-5.1017,-38.3733],"IRACEMA":[-5.8197,-38.5392],"JAGUARETAMA":[-5.5986,-38.7611],"JAGUARIBE":[-5.8908,-38.6217],"PEREIRO":[-6.0367,-38.45],"ERERÊ":[-6.1539,-38.3667],"IBARETAMA":[-5.1292,-38.6811],"POTIRETAMA":[-5.6978,-38.4122],"ALTO SANTO":[-5.5147,-38.2728],"JAGUARIBARA":[-5.1578,-38.6292],"SÃO JOÃO DO JAGUARIBE":[-5.2742,-38.2592],"TABULEIRO DO NORTE":[-5.2542,-37.8667],"QUIXERÉ":[-5.0736,-37.9708],"ITAIÇABA":[-4.8658,-37.8594],"PALHANO":[-4.7447,-37.9736],"BEBERIBE":[-4.1756,-38.1222],"SANTA QUITÉRIA":[-4.3328,-40.1536],"GROAÍRAS":[-3.9339,-40.3683],"MUCAMBO":[-3.905,-40.7458],"GRAÇA":[-4.0494,-40.7561],"MERUOCA":[-3.5447,-40.4572],"MASSAPÊ":[-3.5228,-40.3442],"CARIRÉ":[-3.9511,-40.4703],"GUARACIABA DO NORTE":[-4.1611,-40.7481],"IBIAPINA":[-3.9183,-40.8894],"UBAJARA":[-3.8578,-40.9233],"IPU":[-4.3161,-40.7064],"RERIUTABA":[-4.1508,-40.5747],"PIRES FERREIRA":[-4.2389,-40.6483],"NOVA RUSSAS":[-4.7075,-40.5639],"CATUNDA":[-4.6339,-40.2008],"INDEPENDÊNCIA":[-5.3917,-40.3128],"ARNEIROZ":[-6.395,-40.095],"MONSENHOR TABOSA":[-5.0633,-40.0669],"QUITERIANÓPOLIS":[-5.0869,-40.6822],"TAMBORIL":[-5.6189,-41.0064],"PEDRA BRANCA":[-5.4519,-39.7208],"PARAMOTI":[-4.0883,-39.3922],"ITATIRA":[-4.5247,-39.6167],"CHORÓ":[-4.8447,-39.1253],"BANABUIÚ":[-5.3036,-38.9083],"SENADOR SÁ":[-3.3572,-40.5067],"NOVA OLINDA":[-7.0839,-39.725],"ALTANEIRA":[-7.0108,-39.8156],"CARIRIAÇU":[-7.0394,-39.2825],"JARDIM":[-7.0856,-39.2922],"POTENGI":[-7.0833,-39.0472],"JATI":[-7.7028,-38.9278],"PENAFORTE":[-7.8281,-39.0547],"ARARIPE":[-7.2236,-40.1567],"SANTANA DO CARIRI":[-7.1844,-39.7453],"BARRO":[-7.1794,-38.7758],"MAURITI":[-7.3833,-38.7644],"VARJOTA":[-4.1928,-40.4756],"CAMPOS SALES":[-7.0719,-40.3792],"AIUABA":[-6.5739,-40.6878],"ACOPIARA":[-6.0917,-39.4539],"CATARINA":[-6.1369,-39.8742],"SABOEIRO":[-6.5317,-39.9033],"ORÓS":[-6.2478,-38.9097],"ICÓ":[-6.4017,-38.8608],"CEDRO":[-6.5989,-39.0558],"IPAUMIRIM":[-6.7958,-38.7142],"BAIXIO":[-6.9822,-38.7644],"UMARI":[-6.6467,-38.7111],"LAVRAS DA MANGABEIRA":[-6.7528,-38.9706],"GRANJEIRO":[-6.9778,-38.9992],"VÁRZEA ALEGRE":[-6.7967,-39.2967],"CARIÚS":[-6.5247,-39.4961],"TARRAFAS":[-6.6578,-39.7589],"ANTONINA DO NORTE":[-6.7878,-39.9817],"SOLONÓPOLE":[-5.7342,-39.0119],"MILHÃ":[-5.6736,-39.1833],"PIQUET CARNEIRO":[-5.8,-39.42],"DEPUTADO IRAPUAN PINHEIRO":[-5.9044,-39.4097],"CAPISTRANO":[-4.4678,-38.9014],"MULUNGU":[-4.2978,-38.9903],"GUARAMIRANGA":[-4.2681,-38.9278],"ITAPIÚNA":[-4.5789,-38.9219],"PACAJUS":[-4.1728,-38.4583],"SÃO LUÍS DO CURU":[-3.6719,-39.2392],"PENTECOSTE":[-3.7939,-39.2733],"TEJUÇUOCA":[-3.9867,-39.5833],"HIDROLÂNDIA":[-4.4056,-40.4436],"PORTEIRAS":[-7.5186,-39.1017],"CARNAUBAL":[-4.1644,-40.9333],"MADALENA":[-4.8528,-39.5706],"IRAUÇUBA":[-3.7439,-39.7828],"PALMÁCIA":[-4.1444,-38.8433],"MORAÚJO":[-3.4667,-40.6733],"CHAVAL":[-3.0286,-41.2481],"BARROQUINHA":[-3.0186,-41.1369],"MARTINÓPOLE":[-3.2275,-40.69],"MORRINHOS":[-3.2297,-40.1236],"MARCO":[-3.1261,-40.1525],"BELA CRUZ":[-3.0511,-40.1736],"CRUZ":[-2.9228,-40.1658],"JIJOCA DE JERICOACOARA":[-2.7972,-40.5317],"GRANJA":[-3.1194,-40.8272],"PACUJÁ":[-3.9881,-40.7],"URUBURETAMA":[-3.6503,-39.5008],"APUIARÉS":[-3.9458,-39.4275],"GENERAL SAMPAIO":[-3.7328,-39.4539],"SÃO BENEDITO":[-4.0339,-40.8822],"FRECHEIRINHA":[-3.7625,-40.8183],"PINHEIRO":[-5.9044,-39.4097],"JUCÁS":[-6.5197,-39.5253],"FARIAS BRITO":[-6.9256,-39.5669],"MIRAÍMA":[-3.5636,-40.0142],"NOVO ORIENTE":[-5.5203,-40.7714],"CARIDADE":[-4.2317,-39.1839]};
 
-// Filtros ativos
-let _obrasFilterSetor = '';
-let _obrasFilterTipo = '';
-let _obrasFilterStatus = '';
+// Filtros toggle — Sets de valores ativos
+const _obrasAtivosSetor = new Set();
+const _obrasAtivosTipo  = new Set();
+const _obrasAtivosStatus = new Set();
+
+const TIPOS_POR_SETOR = {
+  'RODOVIAS': ["CONSERVA RODOVI\u00c1RIA", "DUPLICA\u00c7\u00c3O", "OUTROS", "PAVIMENTA\u00c7\u00c3O", "RECUPERA\u00c7\u00c3O FUNCIONAL", "RESTAURA\u00c7\u00c3O"],
+  'EDIFICAÇÕES': ["ARENINHA", "BATALH\u00c3O", "BRINQUEDOPRA\u00c7A", "CASA DA MULHER", "CEI", "CINEMA", "CISP", "CTR", "DELEGACIA", "ESCOLA", "HOSPITALAR", "MONUMENTO RELIGIOSO", "OUTROS", "PARQUE URBANO", "PRA\u00c7A", "QUADRA / GIN\u00c1SIO", "QUARTEL", "RESERVAT\u00d3RIO DE \u00c1GUA", "SALA DE AULA", "TERMINAL RODOVI\u00c1RIO", "TJ", "UNIDADE PRISIONAL", "UNIVERSIDADE"],
+};
 
 function obrasGetFiltradas() {
-  return OBRAS_DATA_LIST ? OBRAS_DATA_LIST.filter(o => {
-    if (_obrasFilterSetor && o.setor !== _obrasFilterSetor) return false;
-    if (_obrasFilterTipo && o.tipo !== _obrasFilterTipo) return false;
-    if (_obrasFilterStatus && o.status !== _obrasFilterStatus) return false;
+  if (!OBRAS_DATA_LIST) return [];
+  return OBRAS_DATA_LIST.filter(o => {
+    if (_obrasAtivosSetor.size  > 0 && !_obrasAtivosSetor.has(o.setor))   return false;
+    if (_obrasAtivosTipo.size   > 0 && !_obrasAtivosTipo.has(o.tipo))     return false;
+    if (_obrasAtivosStatus.size > 0 && !_obrasAtivosStatus.has(o.status)) return false;
     return true;
-  }) : [];
+  });
+}
+
+function obrasToggleChip(el) {
+  const filter = el.dataset.filter;
+  const val    = el.dataset.val;
+  const setMap = { setor: _obrasAtivosSetor, tipo: _obrasAtivosTipo, status: _obrasAtivosStatus };
+  const s = setMap[filter];
+  if (s.has(val)) { s.delete(val); el.classList.remove('active'); }
+  else            { s.add(val);    el.classList.add('active'); }
+
+  // Setor mudou → atualizar chips de tipo disponíveis
+  if (filter === 'setor') _obrasAtualizarChipsTipo();
+  renderObrasAtivos();
+}
+
+function _obrasAtualizarChipsTipo() {
+  const container = document.getElementById('obras-chips-tipo');
+  if (!container) return;
+  // Quais tipos estão disponíveis?
+  let tiposDisponiveis;
+  if (_obrasAtivosSetor.size === 0) {
+    tiposDisponiveis = [...new Set(OBRAS_DATA_LIST.map(o=>o.tipo).filter(Boolean))].sort();
+  } else {
+    tiposDisponiveis = [];
+    _obrasAtivosSetor.forEach(s => {
+      (TIPOS_POR_SETOR[s]||[]).forEach(t => tiposDisponiveis.push(t));
+    });
+    tiposDisponiveis = [...new Set(tiposDisponiveis)].sort();
+  }
+  // Manter seleções válidas, remover inválidas
+  [..._obrasAtivosTipo].forEach(t => { if (!tiposDisponiveis.includes(t)) _obrasAtivosTipo.delete(t); });
+  // Renderizar chips
+  container.innerHTML = tiposDisponiveis.map(t =>
+    '<span class="obras-chip' + (_obrasAtivosTipo.has(t)?' active':'') + '" data-filter="tipo" data-val="' + t + '" onclick="obrasToggleChip(this)">' + t + '</span>'
+  ).join('');
+}
+
+function _obrasAtualizarChipsStatus() {
+  const container = document.getElementById('obras-chips-status');
+  if (!container || !OBRAS_DATA_LIST) return;
+  const statusList = [...new Set(OBRAS_DATA_LIST.map(o=>o.status).filter(Boolean))].sort();
+  container.innerHTML = statusList.map(s =>
+    '<span class="obras-chip' + (_obrasAtivosStatus.has(s)?' active':'') + '" data-filter="status" data-val="' + s + '" onclick="obrasToggleChip(this)">' + s + '</span>'
+  ).join('');
 }
 
 function obrasLimparFiltros() {
-  _obrasFilterSetor = _obrasFilterTipo = _obrasFilterStatus = '';
-  ['setor','tipo','status'].forEach(f => { const el=document.getElementById('obras-filter-'+f); if(el) el.value=''; });
-  obrasAplicarFiltros();
-}
-
-function obrasAplicarFiltros() {
-  _obrasFilterSetor = document.getElementById('obras-filter-setor').value;
-  _obrasFilterTipo = document.getElementById('obras-filter-tipo').value;
-  _obrasFilterStatus = document.getElementById('obras-filter-status').value;
+  _obrasAtivosSetor.clear();
+  _obrasAtivosTipo.clear();
+  _obrasAtivosStatus.clear();
+  document.querySelectorAll('.obras-chip.active').forEach(c => c.classList.remove('active'));
+  _obrasAtualizarChipsTipo();
   renderObrasAtivos();
 }
+
+function obrasAplicarFiltros() { renderObrasAtivos(); }
 
 let OBRAS_DATA_LIST = null; // array flat de todas as obras
 
@@ -3916,13 +3973,9 @@ async function initObrasPanel() {
 
   if (!OBRAS_DATA_LIST || !OBRAS_DATA_LIST.length) return;
 
-  // Popular selects
-  const tipos = [...new Set(OBRAS_DATA_LIST.map(o=>o.tipo).filter(Boolean))].sort();
-  const statusList = [...new Set(OBRAS_DATA_LIST.map(o=>o.status).filter(Boolean))].sort();
-  const selTipo = document.getElementById('obras-filter-tipo');
-  const selStatus = document.getElementById('obras-filter-status');
-  if (selTipo) selTipo.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
-  if (selStatus) selStatus.innerHTML = '<option value="">Todos os status</option>' + statusList.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+  // Popular chips de tipo e status
+  _obrasAtualizarChipsTipo();
+  _obrasAtualizarChipsStatus();
 
   renderObrasAtivos();
 }
@@ -4059,10 +4112,15 @@ function _obrasDesenharPinCidade(obra, color, lat, lng) {
     if (!coord) return;
     lat = coord[0]; lng = coord[1];
   }
+  const pctObra = parseFloat(String(obra.status_fisico||'').replace('%','')) || 0;
+  const isConc = pctObra >= 100;
+  const pinSize = isConc ? 14 : 12;
+  const pinBorder = isConc ? '2px solid #16a34a' : '2px solid #fff';
+  const checkmark = isConc ? '<div style="position:absolute;top:-6px;right:-6px;background:#16a34a;color:#fff;border-radius:50%;width:10px;height:10px;font-size:7px;display:flex;align-items:center;justify-content:center;font-weight:900;">✓</div>' : '';
   const icon = L.divIcon({
     className: '',
-    html: '<div style="width:12px;height:12px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;transition:transform 0.15s;"></div>',
-    iconSize:[12,12], iconAnchor:[6,6]
+    html: '<div style="position:relative;width:'+pinSize+'px;height:'+pinSize+'px;border-radius:50%;background:'+color+';border:'+pinBorder+';box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;transition:transform 0.15s;">'+checkmark+'</div>',
+    iconSize:[pinSize,pinSize], iconAnchor:[pinSize/2,pinSize/2]
   });
   const marker = L.marker([lat,lng], {icon});
   marker.on('click', (e) => { L.DomEvent.stop(e); marcarCliqueEmLinha(); fecharCoordPopup(); openObrasModal(obra); });
@@ -4079,13 +4137,17 @@ function openObrasModal(obra) {
   const color = obrasGetColor(obra.tipo);
   const statusColors = {'EM EXECUÇÃO':'#16a34a','LICITADO':'#2563eb','A LICITAR':'#94a3b8','EM LICITAÇÃO':'#f59e0b','PARALISADA':'#ef4444','EM RESCISÃO':'#dc2626','AGUARDANDO O.S.':'#8b5cf6'};
   const sCor = statusColors[obra.status] || '#64748b';
-
-  document.getElementById('obras-modal-badges').innerHTML =
-    '<span style="background:' + color + '22;color:' + color + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-right:6px;">' + (obra.tipo||'—') + '</span>' +
-    '<span style="background:' + sCor + '22;color:' + sCor + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">' + (obra.status||'—') + '</span>';
-
   const pct = parseFloat(String(obra.status_fisico||'').replace('%','')) || 0;
   const pctColor = pct>=100?'#16a34a':pct>=60?'#2563eb':'#d97706';
+
+  const isConcluida = pct >= 100;
+  const concluidaBadge = isConcluida
+    ? '<span style="background:#dcfce7;color:#16a34a;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-left:6px;">✓ CONCLUÍDA</span>'
+    : '';
+  document.getElementById('obras-modal-badges').innerHTML =
+    '<span style="background:' + color + '22;color:' + color + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-right:6px;">' + (obra.tipo||'—') + '</span>' +
+    '<span style="background:' + sCor + '22;color:' + sCor + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">' + (obra.status||'—') + '</span>' +
+    concluidaBadge;
 
   let bodyHTML = '<div class="obras-progress-wrap"><div class="obras-section-title">Andamento Físico</div>' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
