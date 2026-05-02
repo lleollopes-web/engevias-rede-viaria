@@ -801,7 +801,7 @@
           <option value="iri">Condição do IRI</option>
           <option value="fwd">Condição do FWD</option>
           <option value="recfuncional">Recuperação Funcional</option>
-          <option value="obras">Obras Rodoviárias</option>
+          <option value="obras">Programa de Obras</option>
         </select>
       </div>
 
@@ -1154,8 +1154,30 @@
           <button onclick="obrasRecarregar()" title="Recarregar planilha do GitHub" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer;color:var(--text2);transition:all 0.15s;" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor='var(--border)'">🔄</button>
         </div>
         <div id="obras-load-status" style="display:none;padding:10px 16px;font-size:12px;color:#dc2626;background:#fef2f2;border-bottom:1px solid #fecaca;"></div>
-        <div class="obras-toggle-hint">Clique para ativar/desativar cada ano</div>
-        <div class="obras-ano-btns" id="obras-ano-btns"></div>
+        <!-- Filtros do Programa de Obras -->
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <div class="obras-info-label" style="margin-bottom:4px">SETOR</div>
+            <select id="obras-filter-setor" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
+              <option value="">Todos os setores</option>
+              <option value="RODOVIAS">Rodovias</option>
+              <option value="EDIFICAÇÕES">Edificações</option>
+            </select>
+          </div>
+          <div>
+            <div class="obras-info-label" style="margin-bottom:4px">TIPO DE OBRA</div>
+            <select id="obras-filter-tipo" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
+              <option value="">Todos os tipos</option>
+            </select>
+          </div>
+          <div>
+            <div class="obras-info-label" style="margin-bottom:4px">STATUS</div>
+            <select id="obras-filter-status" onchange="obrasAplicarFiltros()" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text);cursor:pointer;">
+              <option value="">Todos os status</option>
+            </select>
+          </div>
+          <button onclick="obrasLimparFiltros()" style="width:100%;padding:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text3);cursor:pointer;">✕ Limpar filtros</button>
+        </div>
         <div class="obras-stats-bar" id="obras-stats-bar" style="display:none;">
           <div class="obras-stat-chip"><strong id="obras-stat-total">—</strong> obras</div>
           <div class="obras-stat-chip"><strong id="obras-stat-ext">—</strong> km</div>
@@ -3627,7 +3649,6 @@ function setModo(modo) {
   if (recLayerGroup) recLayerGroup.clearLayers();
   if (obrasLayerGroup) obrasLayerGroup.clearLayers();
   if (obrasMarkerGroup) obrasMarkerGroup.clearLayers();
-  obrasAtivos.clear();
   ['lvc','iri','fwd'].forEach(m => {
     const c = document.getElementById(m+'-resumo-card');
     if (c) c.classList.remove('active');
@@ -3767,6 +3788,38 @@ function renderLVC() {
 // URL do Excel no GitHub (raw)
 const OBRAS_XLSX_URL = 'https://raw.githubusercontent.com/lleollopes-web/engevias-rede-viaria/main/OBRAS.xlsx';
 
+// Coordenadas dos municípios do Ceará (centróides)
+const MUNICIPIOS_CE = {"FORTALEZA":[-3.7172,-38.5431],"JUAZEIRO DO NORTE":[-7.2136,-39.3153],"CRATO":[-7.2336,-39.4094],"SOBRAL":[-3.6883,-40.3497],"MARACANAÚ":[-3.7789,-38.6258],"CAUCAIA":[-3.7411,-38.6531],"ITAPIPOCA":[-3.4933,-39.5786],"IGUATU":[-6.3593,-39.2986],"QUIXADÁ":[-4.9704,-39.0152],"CRATEÚS":[-5.1769,-40.6722],"TIANGUÁ":[-3.7294,-40.9929],"LIMOEIRO DO NORTE":[-5.1447,-38.0992],"RUSSAS":[-4.9393,-37.9753],"ARACATI":[-4.5606,-37.7703],"PACATUBA":[-3.9869,-38.6131],"QUIXERAMOBIM":[-5.1986,-39.2858],"TAUÁ":[-6.0017,-40.2919],"CAMOCIM":[-2.9019,-40.8419],"ACARAÚ":[-2.8853,-40.1203],"CANINDÉ":[-4.3558,-39.3139],"BOA VIAGEM":[-5.1236,-39.7283],"SENADOR POMPEU":[-5.5825,-39.3722],"BATURITÉ":[-4.3286,-38.8825],"REDENÇÃO":[-4.2272,-38.7261],"AURORA":[-6.9472,-38.9733],"BARBALHA":[-7.31,-39.3033],"BREJO SANTO":[-7.4917,-38.9839],"MISSÃO VELHA":[-7.2481,-39.1428],"ABAIARA":[-7.3556,-39.0439],"MILAGRES":[-6.9181,-38.9339],"ARARENDÁ":[-4.7467,-40.8358],"PACOTI":[-4.2258,-38.9294],"ARACOIABA":[-4.3628,-38.8133],"ITAITINGA":[-3.9728,-38.5256],"AQUIRAZ":[-3.8978,-38.3928],"HORIZONTE":[-4.1008,-38.4978],"PINDORETAMA":[-4.0075,-38.2947],"EUSÉBIO":[-3.8892,-38.4536],"MARANGUAPE":[-3.8889,-38.6839],"ITAPAJÉ":[-3.6847,-39.5839],"PARAIPABA":[-3.4386,-39.1508],"UMIRIM":[-3.6733,-39.3453],"TURURU":[-3.4611,-39.4628],"SÃO GONÇALO DO AMARANTE":[-3.605,-38.9747],"PARACURU":[-3.4108,-39.0325],"TRAIRI":[-3.2769,-39.2694],"AMONTADA":[-3.3647,-39.8264],"ITAREMA":[-2.9222,-39.9133],"ACARAPE":[-4.2222,-38.7064],"BARREIRA":[-4.2856,-38.6511],"GUAIÚBA":[-4.0569,-38.6447],"OCARA":[-4.4853,-38.5803],"CHOROZINHO":[-4.2939,-38.4978],"CASCAVEL":[-4.1358,-38.2358],"FORTIM":[-4.4489,-37.7961],"JAGUARUANA":[-4.8361,-37.7822],"MORADA NOVA":[-5.1017,-38.3733],"IRACEMA":[-5.8197,-38.5392],"JAGUARETAMA":[-5.5986,-38.7611],"JAGUARIBE":[-5.8908,-38.6217],"PEREIRO":[-6.0367,-38.45],"ERERÊ":[-6.1539,-38.3667],"IBARETAMA":[-5.1292,-38.6811],"POTIRETAMA":[-5.6978,-38.4122],"ALTO SANTO":[-5.5147,-38.2728],"JAGUARIBARA":[-5.1578,-38.6292],"SÃO JOÃO DO JAGUARIBE":[-5.2742,-38.2592],"TABULEIRO DO NORTE":[-5.2542,-37.8667],"QUIXERÉ":[-5.0736,-37.9708],"ITAIÇABA":[-4.8658,-37.8594],"PALHANO":[-4.7447,-37.9736],"BEBERIBE":[-4.1756,-38.1222],"SANTA QUITÉRIA":[-4.3328,-40.1536],"GROAÍRAS":[-3.9339,-40.3683],"MUCAMBO":[-3.905,-40.7458],"GRAÇA":[-4.0494,-40.7561],"MERUOCA":[-3.5447,-40.4572],"MASSAPÊ":[-3.5228,-40.3442],"CARIRÉ":[-3.9511,-40.4703],"GUARACIABA DO NORTE":[-4.1611,-40.7481],"IBIAPINA":[-3.9183,-40.8894],"UBAJARA":[-3.8578,-40.9233],"IPU":[-4.3161,-40.7064],"RERIUTABA":[-4.1508,-40.5747],"PIRES FERREIRA":[-4.2389,-40.6483],"NOVA RUSSAS":[-4.7075,-40.5639],"CATUNDA":[-4.6339,-40.2008],"INDEPENDÊNCIA":[-5.3917,-40.3128],"ARNEIROZ":[-6.395,-40.095],"MONSENHOR TABOSA":[-5.0633,-40.0669],"QUITERIANÓPOLIS":[-5.0869,-40.6822],"TAMBORIL":[-5.6189,-41.0064],"PEDRA BRANCA":[-5.4519,-39.7208],"PARAMOTI":[-4.0883,-39.3922],"ITATIRA":[-4.5247,-39.6167],"CHORÓ":[-4.8447,-39.1253],"BANABUIÚ":[-5.3036,-38.9083],"SENADOR SÁ":[-3.3572,-40.5067],"NOVA OLINDA":[-7.0839,-39.725],"ALTANEIRA":[-7.0108,-39.8156],"CARIRIAÇU":[-7.0394,-39.2825],"JARDIM":[-7.0856,-39.2922],"POTENGI":[-7.0833,-39.0472],"JATI":[-7.7028,-38.9278],"PENAFORTE":[-7.8281,-39.0547],"ARARIPE":[-7.2236,-40.1567],"SANTANA DO CARIRI":[-7.1844,-39.7453],"BARRO":[-7.1794,-38.7758],"MAURITI":[-7.3833,-38.7644],"VARJOTA":[-4.1928,-40.4756],"CAMPOS SALES":[-7.0719,-40.3792],"AIUABA":[-6.5739,-40.6878],"ACOPIARA":[-6.0917,-39.4539],"CATARINA":[-6.1369,-39.8742],"SABOEIRO":[-6.5317,-39.9033],"ORÓS":[-6.2478,-38.9097],"ICÓ":[-6.4017,-38.8608],"CEDRO":[-6.5989,-39.0558],"IPAUMIRIM":[-6.7958,-38.7142],"BAIXIO":[-6.9822,-38.7644],"UMARI":[-6.6467,-38.7111],"LAVRAS DA MANGABEIRA":[-6.7528,-38.9706],"GRANJEIRO":[-6.9778,-38.9992],"VÁRZEA ALEGRE":[-6.7967,-39.2967],"CARIÚS":[-6.5247,-39.4961],"TARRAFAS":[-6.6578,-39.7589],"ANTONINA DO NORTE":[-6.7878,-39.9817],"SOLONÓPOLE":[-5.7342,-39.0119],"MILHÃ":[-5.6736,-39.1833],"PIQUET CARNEIRO":[-5.8,-39.42],"DEPUTADO IRAPUAN PINHEIRO":[-5.9044,-39.4097],"CAPISTRANO":[-4.4678,-38.9014],"MULUNGU":[-4.2978,-38.9903],"GUARAMIRANGA":[-4.2681,-38.9278],"ITAPIÚNA":[-4.5789,-38.9219],"PACAJUS":[-4.1728,-38.4583],"SÃO LUÍS DO CURU":[-3.6719,-39.2392],"PENTECOSTE":[-3.7939,-39.2733],"TEJUÇUOCA":[-3.9867,-39.5833],"HIDROLÂNDIA":[-4.4056,-40.4436],"PORTEIRAS":[-7.5186,-39.1017],"CARNAUBAL":[-4.1644,-40.9333],"MADALENA":[-4.8528,-39.5706],"IRAUÇUBA":[-3.7439,-39.7828],"PALMÁCIA":[-4.1444,-38.8433],"MORAÚJO":[-3.4667,-40.6733],"CHAVAL":[-3.0286,-41.2481],"BARROQUINHA":[-3.0186,-41.1369],"MARTINÓPOLE":[-3.2275,-40.69],"MORRINHOS":[-3.2297,-40.1236],"MARCO":[-3.1261,-40.1525],"BELA CRUZ":[-3.0511,-40.1736],"CRUZ":[-2.9228,-40.1658],"JIJOCA DE JERICOACOARA":[-2.7972,-40.5317],"GRANJA":[-3.1194,-40.8272],"PACUJÁ":[-3.9881,-40.7],"URUBURETAMA":[-3.6503,-39.5008],"APUIARÉS":[-3.9458,-39.4275],"GENERAL SAMPAIO":[-3.7328,-39.4539],"SÃO BENEDITO":[-4.0339,-40.8822],"FRECHEIRINHA":[-3.7625,-40.8183],"PINHEIRO":[-5.9044,-39.4097],"JUCÁS":[-6.5197,-39.5253],"FARIAS BRITO":[-6.9256,-39.5669],"MIRAÍMA":[-3.5636,-40.0142],"NOVO ORIENTE":[-5.5203,-40.7714],"CARIDADE":[-4.2317,-39.1839]};
+
+// Filtros ativos
+let _obrasFilterSetor = '';
+let _obrasFilterTipo = '';
+let _obrasFilterStatus = '';
+
+function obrasGetFiltradas() {
+  return OBRAS_DATA_LIST ? OBRAS_DATA_LIST.filter(o => {
+    if (_obrasFilterSetor && o.setor !== _obrasFilterSetor) return false;
+    if (_obrasFilterTipo && o.tipo !== _obrasFilterTipo) return false;
+    if (_obrasFilterStatus && o.status !== _obrasFilterStatus) return false;
+    return true;
+  }) : [];
+}
+
+function obrasLimparFiltros() {
+  _obrasFilterSetor = _obrasFilterTipo = _obrasFilterStatus = '';
+  ['setor','tipo','status'].forEach(f => { const el=document.getElementById('obras-filter-'+f); if(el) el.value=''; });
+  obrasAplicarFiltros();
+}
+
+function obrasAplicarFiltros() {
+  _obrasFilterSetor = document.getElementById('obras-filter-setor').value;
+  _obrasFilterTipo = document.getElementById('obras-filter-tipo').value;
+  _obrasFilterStatus = document.getElementById('obras-filter-status').value;
+  renderObrasAtivos();
+}
+
+let OBRAS_DATA_LIST = null; // array flat de todas as obras
+
 let OBRAS_DATA = { '2023': [], '2024': [], '2025': [] };
 let obrasCarregadas = false;
 
@@ -3777,146 +3830,51 @@ async function carregarObrasXLSX() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const buf = await res.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
-    const resultado = {};
+    const ws = wb.Sheets[wb.SheetNames[0]]; // única aba
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 
-    wb.SheetNames.forEach(sheetName => {
-      const ws = wb.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-      const isAndamento = sheetName.includes('ANDAMENTO');
+    const fmtDate = (v) => { if (!v) return ''; if (v instanceof Date) return v.toLocaleDateString('pt-BR'); return String(v).trim(); };
+    const fmtVal = (v) => { if (v===null||v===undefined||v==='') return ''; const f=parseFloat(v); if(isNaN(f)) return ''; return 'R$ '+f.toLocaleString('pt-BR',{minimumFractionDigits:2}); };
+    const fmtPct = (v) => { if (v===null||v===undefined||v==='') return ''; const f=parseFloat(v); if(isNaN(f)) return ''; const p=(f<=1&&f>0)?f*100:f; return p.toFixed(p%1===0?0:1)+'%'; };
+    const clean = (v) => (v!==null&&v!==undefined)?String(v).trim().replace(/\n/g,' '):'';
 
-      // Estrutura fixa conhecida:
-      // Linha 0: título
-      // Linha 1: vazia
-      // Linha 2: cabeçalho (Nº, Tipo, ROD., ...)
-      // Linha 3: seção "OBRAS CONCLUÍDAS XXXX" (só nas anuais) OU dados (andamento)
-      // Linha 4+: dados (anuais) / Linha 3+: dados (andamento)
-      const dataStartRow = isAndamento ? 3 : 4;
-      const sreColIdx    = isAndamento ? 30 : 20;
-
-      const fmtDate = (v) => {
-        if (!v) return '';
-        if (v instanceof Date) return v.toLocaleDateString('pt-BR');
-        return String(v).trim();
-      };
-      const fmtVal = (v) => {
-        if (v === null || v === undefined || v === '') return '';
-        const f = parseFloat(v);
-        if (isNaN(f)) return '';
-        return 'R$ ' + f.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      };
-      const fmtPct = (v) => {
-        if (v === null || v === undefined || v === '') return '';
-        const f = parseFloat(v);
-        if (isNaN(f)) return '';
-        const pct = (f <= 1 && f > 0) ? f * 100 : f;
-        return pct.toFixed(pct % 1 === 0 ? 0 : 1) + '%';
-      };
-      const clean = (v) => (v !== null && v !== undefined) ? String(v).trim().replace(/\n/g, ' ') : '';
-      const isCoord = (v) => {
-        const s = String(v).replace(/[°\s]/g,'').replace(',','.');
-        const n = parseFloat(s);
-        return !isNaN(n) && String(s).includes('.') && n > -90 && n < 90;
-      };
-
-      const obras = [];
-      for (let r = dataStartRow; r < rows.length; r++) {
-        const row = rows[r];
-        if (!row || row[0] === null || row[0] === undefined) continue;
-        const num = parseInt(row[0]);
-        if (isNaN(num)) continue; // pula linhas de seção e totais
-
-        // SREs ou coordenadas a partir de sreColIdx
-        let sres = [], coordLat = null, coordLng = null;
-        const u0 = row[sreColIdx] != null ? String(row[sreColIdx]).trim() : '';
-        const u1 = row[sreColIdx + 1] != null ? String(row[sreColIdx + 1]).trim() : '';
-
-        if (u0 && isCoord(u0) && u1 && isCoord(u1)) {
-          coordLat = parseFloat(u0.replace(/[°]/g, '').replace(',', '.'));
-          coordLng = parseFloat(u1.replace(/[°]/g, '').replace(',', '.'));
-        } else {
-          for (let c = sreColIdx; c < row.length; c++) {
-            const v = row[c] != null ? String(row[c]).trim() : '';
-            if (v && !isCoord(v)) sres.push(v);
-          }
-        }
-
-        let obra;
-        if (isAndamento) {
-          obra = {
-            num,
-            tipo:               clean(row[1]),
-            rodovia:            clean(row[2]),
-            descricao:          clean(row[3]),
-            fiscal:             clean(row[4]),
-            extensao:           clean(row[5]),
-            municipio:          clean(row[6]),
-            macrorregiao:       clean(row[7]),
-            distrito:           clean(row[8]),
-            data_inicio:        fmtDate(row[9]),
-            data_fim:           fmtDate(row[10]),
-            vigencia:           fmtDate(row[11]),
-            previsao_conclusao: fmtDate(row[12]),
-            situacao:           clean(row[13]),
-            empregos_dir:       clean(row[14]),
-            empregos_ind:       clean(row[15]),
-            valor:              fmtVal(row[16]),
-            status_fisico:      fmtPct(row[17]),
-            total_empenhado:    fmtVal(row[18]),
-            status_financeiro:  fmtPct(row[19]),
-            saldo_contrato:     fmtVal(row[20]),
-            previsao_2025:      fmtVal(row[21]),
-            contrato:           clean(row[22]),
-            mapp:               clean(row[23]),
-            sit_mapp:           clean(row[24]),
-            tipo_pav:           clean(row[25]),
-            empresa:            clean(row[26]),
-            observacoes:        clean(row[27]),
-            interferencia:      clean(row[28]),
-            evento:             clean(row[29]),
-            sres, coordLat, coordLng,
-            label: sheetName, isAndamento: true,
-          };
-        } else {
-          obra = {
-            num,
-            tipo:         clean(row[1]),
-            rodovia:      clean(row[2]),
-            descricao:    clean(row[3]),
-            extensao:     clean(row[4]),
-            municipio:    clean(row[5]),
-            macrorregiao: clean(row[6]),
-            distrito:     clean(row[7]),
-            data_inicio:  fmtDate(row[8]),
-            data_fim:     fmtDate(row[9]),
-            situacao:     clean(row[10]),
-            valor:        fmtVal(row[11]),
-            status_fisico: fmtPct(row[12]),
-            contrato:     clean(row[13]),
-            mapp:         clean(row[14]),
-            sit_mapp:     clean(row[15]),
-            tipo_pav:     clean(row[16]),
-            empresa:      clean(row[17]),
-            observacoes:  clean(row[18]),
-            evento:       clean(row[19]),
-            sres, coordLat, coordLng,
-            label: sheetName, isAndamento: false,
-          };
-        }
-        obras.push(obra);
-      }
-      resultado[sheetName] = obras;
-    });
-
-    OBRAS_DATA = resultado;
+    OBRAS_DATA_LIST = [];
+    for (let r = 1; r < rows.length; r++) {
+      const row = rows[r];
+      if (!row || !row[0]) continue;
+      // AH (idx 33): separar SREs de cidades
+      const ah = row[33] != null ? String(row[33]) : '';
+      const sres = [], cidades = [];
+      ah.split(',').forEach(item => {
+        const v = item.trim();
+        if (!v) return;
+        if (/^\d/.test(v)) sres.push(v);
+        else cidades.push(v.toUpperCase().trim());
+      });
+      OBRAS_DATA_LIST.push({
+        num: clean(row[3]), origem: clean(row[0]), setor: clean(row[1]),
+        demandante: clean(row[2]), tipo: clean(row[4]), status: clean(row[5]),
+        rodovia: clean(row[6]), descricao: clean(row[7]), fiscal: clean(row[8]),
+        extensao: clean(row[9]), municipio1: clean(row[10]), municipio2: clean(row[11]),
+        municipio3: clean(row[12]), macrorregiao1: clean(row[13]), macrorregiao2: clean(row[14]),
+        distrito: clean(row[15]), data_inicio: fmtDate(row[16]), data_fim: fmtDate(row[17]),
+        vigencia: fmtDate(row[18]), situacao: clean(row[19]), valor: fmtVal(row[20]),
+        status_fisico: fmtPct(row[21]), total_empenhado: fmtVal(row[22]),
+        status_financeiro: fmtPct(row[23]), contrato: clean(row[24]),
+        codigo_obra: clean(row[25]), mapp: clean(row[26]), sit_mapp: clean(row[27]),
+        tipo_pav: clean(row[28]), empresa: clean(row[29]), observacoes: clean(row[30]),
+        evento: clean(row[31]), setor_licitacao: clean(row[32]),
+        sres, cidades,
+      });
+    }
     obrasCarregadas = true;
-    console.log('Obras carregadas:', Object.entries(OBRAS_DATA).map(([a,v])=>a+':'+v.length).join(', '));
-  } catch (err) {
-    console.error('Erro ao carregar obras.xlsx:', err);
+    console.log('Programa de Obras carregado:', OBRAS_DATA_LIST.length, 'obras');
+  } catch(err) {
+    console.error('Erro ao carregar OBRAS.xlsx:', err);
     const el = document.getElementById('obras-load-status');
-    if (el) { el.textContent = '⚠️ Erro ao carregar planilha. Verifique o arquivo no GitHub.'; el.style.display = 'block'; }
+    if (el) { el.textContent = '⚠️ Erro ao carregar planilha.'; el.style.display='block'; }
   }
 }
-
 // OBRAS_DATA é carregado dinamicamente — placeholder;
 
 const OBRAS_COLORS = {
@@ -3947,28 +3905,26 @@ function obrasRecarregar() {
 }
 
 async function initObrasPanel() {
-  const btns = document.getElementById('obras-ano-btns');
-  btns.innerHTML = '<div style="padding:16px;font-size:13px;color:var(--text3);text-align:center;">⏳ Carregando planilha...</div>';
+  document.getElementById('obras-load-status').textContent = '⏳ Carregando planilha...';
+  document.getElementById('obras-load-status').style.display = 'block';
   document.getElementById('obras-stats-bar').style.display = 'none';
   document.getElementById('obras-legend').style.display = 'none';
 
   await carregarObrasXLSX();
 
-  btns.innerHTML = '';
-  Object.keys(OBRAS_DATA).forEach(label => {
-    const obras = OBRAS_DATA[label] || [];
-    const isAndamento = label.includes('ANDAMENTO');
-    const btn = document.createElement('button');
-    btn.className = 'lvc-ano-btn';
-    btn.dataset.label = label;
-    const subtitulo = isAndamento
-      ? `${obras.length} obras em andamento`
-      : `${obras.length} obras concluídas`;
-    const icone = isAndamento ? '🚧' : '✅';
-    btn.innerHTML = `<span style="font-size:15px;font-weight:800">${icone} ${label.replace('OBRAS ','')}</span><span class="btn-label" style="font-size:11px;font-weight:500;white-space:nowrap">${subtitulo}</span>`;
-    btn.onclick = () => obrasSelectAno(label);
-    btns.appendChild(btn);
-  });
+  document.getElementById('obras-load-status').style.display = 'none';
+
+  if (!OBRAS_DATA_LIST || !OBRAS_DATA_LIST.length) return;
+
+  // Popular selects
+  const tipos = [...new Set(OBRAS_DATA_LIST.map(o=>o.tipo).filter(Boolean))].sort();
+  const statusList = [...new Set(OBRAS_DATA_LIST.map(o=>o.status).filter(Boolean))].sort();
+  const selTipo = document.getElementById('obras-filter-tipo');
+  const selStatus = document.getElementById('obras-filter-status');
+  if (selTipo) selTipo.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+  if (selStatus) selStatus.innerHTML = '<option value="">Todos os status</option>' + statusList.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+
+  renderObrasAtivos();
 }
 
 function obrasSelectAno(label) {
@@ -4016,6 +3972,19 @@ function _obrasDesenharSemLocalizacao(obra) {
   // m.addTo(obrasLayerGroup);
 }
 
+function obrasGetColor(tipo) {
+  const t = (tipo||'').toUpperCase();
+  if (t.includes('DUPLIC')) return '#2563eb';
+  if (t.includes('PAVIMENT') || t.includes('CONSERVA')) return '#16a34a';
+  if (t.includes('RESTAUR')) return '#d97706';
+  if (t.includes('RECUP')) return '#9333ea';
+  if (['ESCOLA','CEI','ARENINHA','HOSPITAL','BRINQUEDO','QUADRA','SALA DE AULA',
+       'UNIVERSIDADE','DELEGACIA','CISP','BATALHÃO','QUARTEL','TERMINAL','PRAÇA',
+       'PARQUE','CINEMA','CTR','TJ','UNIDADE PRISIONAL','RESERVATÓRIO','CASA DA MULHER',
+       'MONUMENTO'].some(k => t.includes(k))) return '#ef4444';
+  return '#64748b';
+}
+
 function renderObrasAtivos() {
   if (!obrasLayerGroup) obrasLayerGroup = L.layerGroup().addTo(map);
   if (!obrasMarkerGroup) obrasMarkerGroup = L.layerGroup().addTo(map);
@@ -4023,360 +3992,145 @@ function renderObrasAtivos() {
   obrasMarkerGroup.clearLayers();
   _obrasRenderizadas = [];
 
-  // Criar panes por label com z-index crescente
-  // Em Andamento fica ABAIXO dos anos concluídos
-  const labelOrder = [];
-  // Primeiro Em Andamento (mais abaixo), depois anos (mais acima)
-  obrasAtivos.forEach(l => { if (l.includes('ANDAMENTO')) labelOrder.push(l); });
-  obrasAtivos.forEach(l => { if (!l.includes('ANDAMENTO')) labelOrder.push(l); });
-
-  labelOrder.forEach((label, idx) => {
-    const paneName = 'obrasPane_' + idx;
-    if (!map.getPane(paneName)) {
-      map.createPane(paneName);
-      map.getPane(paneName).style.zIndex = 651 + idx;
-      map.getPane(paneName).style.pointerEvents = 'auto';
-    }
-  });
-
-  // Juntar obras mantendo a ordem: Em Andamento primeiro, anos depois
-  const todasObras = [];
-  labelOrder.forEach(label => {
-    (OBRAS_DATA[label] || []).forEach(o => todasObras.push({...o, _label: label, _pane: 'obrasPane_' + labelOrder.indexOf(label)}));
-  });
-
+  if (!OBRAS_DATA_LIST) return;
+  const obras = obrasGetFiltradas();
   const geojsonFeatures = allFeatures;
   let totalExt = 0;
 
-  // ── Camada base cyan: usar camada pré-renderizada ──
+  // Garantir pane para obras
+  if (!map.getPane('obrasPane')) {
+    map.createPane('obrasPane');
+    map.getPane('obrasPane').style.zIndex = 651;
+    map.getPane('obrasPane').style.pointerEvents = 'auto';
+  }
+
+  // Camada cyan base
   const sresComObra = new Set();
-  todasObras.forEach(obra => {
-    (obra.sres || []).forEach(sre => sresComObra.add(sre));
-  });
+  obras.forEach(o => (o.sres||[]).forEach(s => sresComObra.add(s)));
   _drawGrayBase(obrasLayerGroup, sresComObra);
 
-  todasObras.forEach(obra => {
+  obras.forEach(obra => {
     const color = obrasGetColor(obra.tipo);
-    const ext = parseFloat(String(obra.extensao).replace(',','.')) || 0;
-    totalExt += ext;
+    totalExt += parseFloat(String(obra.extensao||'0').replace(',','.')) || 0;
 
-    if (obra.coordLat && obra.coordLng) {
-      // ── Obra pontual: marcador trator amarelo ──
-      const pinIcon = L.divIcon({
-        className: '',
-        html: `<div style="
-          position:relative;
-          cursor:pointer;
-          filter:drop-shadow(0 3px 6px rgba(0,0,0,0.45));
-          transition:transform 0.15s;
-          width:44px;height:44px;
-        ">
-          <!-- Sombra base -->
-          <div style="position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);
-            width:28px;height:6px;background:rgba(0,0,0,0.2);border-radius:50%;"></div>
-          <!-- Corpo do trator SVG -->
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="44" height="44">
-            <!-- Roda traseira grande -->
-            <circle cx="20" cy="46" r="13" fill="#1a1a1a"/>
-            <circle cx="20" cy="46" r="9" fill="#333"/>
-            <circle cx="20" cy="46" r="4" fill="#555"/>
-            <!-- Roda dianteira pequena -->
-            <circle cx="46" cy="50" r="8" fill="#1a1a1a"/>
-            <circle cx="46" cy="50" r="5" fill="#333"/>
-            <circle cx="46" cy="50" r="2.5" fill="#555"/>
-            <!-- Chassis -->
-            <rect x="18" y="40" width="32" height="8" rx="2" fill="#222"/>
-            <!-- Corpo principal amarelo -->
-            <rect x="22" y="22" width="26" height="22" rx="3" fill="#F5C400"/>
-            <rect x="22" y="22" width="26" height="4" rx="2" fill="#E0B000"/>
-            <!-- Capô motor -->
-            <rect x="38" y="28" width="14" height="14" rx="2" fill="#E0B000"/>
-            <rect x="39" y="29" width="12" height="3" rx="1" fill="#C89A00"/>
-            <!-- Cabine / janela -->
-            <rect x="23" y="23" width="14" height="13" rx="2" fill="#87CEEB" opacity="0.85"/>
-            <rect x="24" y="24" width="12" height="5" rx="1" fill="#B0E0F0" opacity="0.7"/>
-            <!-- Exaustor -->
-            <rect x="33" y="14" width="4" height="10" rx="2" fill="#888"/>
-            <ellipse cx="35" cy="13" rx="3" ry="2" fill="#666"/>
-            <!-- Pá / lâmina frontal -->
-            <rect x="10" y="38" width="14" height="6" rx="1" fill="#F5C400" stroke="#C89A00" stroke-width="1"/>
-            <rect x="8" y="36" width="4" height="10" rx="1" fill="#E0B000"/>
-            <!-- Farol -->
-            <circle cx="50" cy="32" r="2.5" fill="#FFF9C4" opacity="0.9"/>
-            <!-- Detalhes chassis -->
-            <rect x="20" y="43" width="28" height="3" rx="1" fill="#444"/>
-          </svg>
-        </div>`,
-        iconSize: [44, 44],
-        iconAnchor: [22, 44],
-        popupAnchor: [0, -44],
-      });
-      const marker = L.marker([obra.coordLat, obra.coordLng], { icon: pinIcon });
-      marker.on('click', (e) => {
-        L.DomEvent.stopPropagation(e);
-        marcarCliqueEmLinha();
-        fecharCoordPopup();
-        openObrasModal(obra);
-      });
-      marker.on('mouseover', function() {
-        const el = this.getElement().querySelector('div');
-        if (el) el.style.transform = 'scale(1.2) translateY(-4px)';
-      });
-      marker.on('mouseout', function() {
-        const el = this.getElement().querySelector('div');
-        if (el) el.style.transform = 'scale(1) translateY(0)';
-      });
-      marker.addTo(obrasLayerGroup);
-
-    } else if (obra.sres && obra.sres.length > 0) {
-      // ── Obra linear: desenhar segmentos do shapefile ──
+    if (obra.sres && obra.sres.length > 0) {
       let linesAdded = 0;
       obra.sres.forEach(sre => {
-        const feat = geojsonFeatures.find(f => f.properties.name === sre || f.properties.id === sre);
+        const feat = geojsonFeatures.find(f => f.properties.name===sre || f.properties.id===sre);
         if (!feat || !feat.geometry) return;
-        const coords = feat.geometry.coordinates.map(c => [c[1], c[0]]);
-        const paneName = obra._pane || 'obrasPane';
+        const coords = feat.geometry.coordinates.map(c=>[c[1],c[0]]);
         const line = L.polyline(coords, {
           color, weight: 6, opacity: 0.9, smoothFactor: 1,
           interactive: true, bubblingMouseEvents: false,
-          className: 'obras-hit', pane: paneName
+          className: 'obras-hit', pane: 'obrasPane'
         });
-        line.on('mouseover', function() {
-          this.setStyle({ weight: 9, opacity: 1 });
-          const el = this.getElement();
-          if (el) el.style.cursor = 'pointer';
-        });
-        line.on('mouseout', function() {
-          this.setStyle({ weight: 6, opacity: 0.9 });
-        });
+        line.on('click', (e) => { L.DomEvent.stop(e); marcarCliqueEmLinha(); fecharCoordPopup(); openObrasModal(obra); });
+        line.on('mouseover', function() { this.setStyle({weight:9,opacity:1}); const el=this.getElement(); if(el) el.style.cursor='pointer'; });
+        line.on('mouseout', function() { this.setStyle({weight:6,opacity:0.9}); });
         line.addTo(obrasLayerGroup);
-        _obrasRenderizadas.push({ obra, coords });
+        _obrasRenderizadas.push({obra, coords});
         linesAdded++;
       });
-      // ── SREs listados mas nenhum encontrado no shapefile → ícone cinza ──
-      if (linesAdded === 0) {
-        _obrasDesenharSemLocalizacao(obra);
-      }
-    } else {
-      // ── Sem SREs e sem coordenadas → ícone cinza pendente ──
-      _obrasDesenharSemLocalizacao(obra);
+      if (linesAdded === 0) _obrasDesenharPinCidade(obra, color);
+
+    } else if (obra.cidades && obra.cidades.length > 0) {
+      obra.cidades.forEach(cidade => {
+        const coord = MUNICIPIOS_CE[cidade];
+        if (!coord) return;
+        _obrasDesenharPinCidade(obra, color, coord[0], coord[1]);
+      });
     }
   });
 
-  // Stats bar
-  const bar = document.getElementById('obras-stats-bar');
-  const legend = document.getElementById('obras-legend');
-  bar.style.display = obrasAtivos.size > 0 ? 'flex' : 'none';
-  legend.style.display = obrasAtivos.size > 0 ? 'flex' : 'none';
-  document.getElementById('obras-stat-total').textContent = todasObras.length;
-  document.getElementById('obras-stat-ext').textContent = totalExt.toLocaleString('pt-BR', {maximumFractionDigits:1});
-
-  // Valor total formatado
-  const valorTotal = todasObras.reduce((sum, o) => {
-    const v = parseFloat(String(o.valor).replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
-    return sum + v;
-  }, 0);
-  const fmt = (v) => {
-    if (v >= 1e9) return 'R$ ' + (v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' bi';
-    if (v >= 1e6) return 'R$ ' + (v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mi';
-    return 'R$ ' + v.toLocaleString('pt-BR',{maximumFractionDigits:0});
-  };
-  document.getElementById('obras-stat-valor').textContent = fmt(valorTotal);
+  // Stats
+  document.getElementById('obras-stats-bar').style.display = 'flex';
+  document.getElementById('obras-legend').style.display = 'flex';
+  document.getElementById('obras-stat-total').textContent = obras.length.toLocaleString('pt-BR');
+  document.getElementById('obras-stat-ext').textContent = totalExt.toLocaleString('pt-BR',{maximumFractionDigits:1});
+  const vTotal = obras.reduce((s,o) => { const v=parseFloat(String(o.valor||'').replace('R$','').replace(/\./g,'').replace(',','.').trim()); return s+(isNaN(v)?0:v); }, 0);
+  const fmt = v => v>=1e9?'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi':v>=1e6?'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':'R$ '+v.toLocaleString('pt-BR',{maximumFractionDigits:0});
+  document.getElementById('obras-stat-valor').textContent = fmt(vTotal);
 }
 
+function _obrasDesenharPinCidade(obra, color, lat, lng) {
+  if (lat === undefined) {
+    const cidade = (obra.municipio1||'').toUpperCase();
+    const coord = MUNICIPIOS_CE[cidade];
+    if (!coord) return;
+    lat = coord[0]; lng = coord[1];
+  }
+  const icon = L.divIcon({
+    className: '',
+    html: '<div style="width:12px;height:12px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);cursor:pointer;transition:transform 0.15s;"></div>',
+    iconSize:[12,12], iconAnchor:[6,6]
+  });
+  const marker = L.marker([lat,lng], {icon});
+  marker.on('click', (e) => { L.DomEvent.stop(e); marcarCliqueEmLinha(); fecharCoordPopup(); openObrasModal(obra); });
+  marker.on('mouseover', function() { const el=this.getElement().querySelector('div'); if(el) el.style.transform='scale(1.6)'; });
+  marker.on('mouseout', function() { const el=this.getElement().querySelector('div'); if(el) el.style.transform='scale(1)'; });
+  marker.addTo(obrasLayerGroup);
+}
+
+
 function openObrasModal(obra) {
+  document.getElementById('obras-modal-num').textContent = 'OBRA Nº ' + (obra.num||'—') + ' · ' + (obra.setor||'');
+  document.getElementById('obras-modal-title').textContent = obra.descricao || obra.rodovia || '—';
+
   const color = obrasGetColor(obra.tipo);
+  const statusColors = {'EM EXECUÇÃO':'#16a34a','LICITADO':'#2563eb','A LICITAR':'#94a3b8','EM LICITAÇÃO':'#f59e0b','PARALISADA':'#ef4444','EM RESCISÃO':'#dc2626','AGUARDANDO O.S.':'#8b5cf6'};
+  const sCor = statusColors[obra.status] || '#64748b';
 
-  // Header
-  document.getElementById('obras-modal-num').textContent = `OBRA Nº ${obra.num} · ${obra.label || obra.ano || ''}`;
-  document.getElementById('obras-modal-title').textContent = obra.descricao || obra.rodovia;
+  document.getElementById('obras-modal-badges').innerHTML =
+    '<span style="background:' + color + '22;color:' + color + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-right:6px;">' + (obra.tipo||'—') + '</span>' +
+    '<span style="background:' + sCor + '22;color:' + sCor + ';padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">' + (obra.status||'—') + '</span>';
 
-  // Badges
-  const tipoColors = {
-    'DUP.': ['#dbeafe','#1d4ed8'], 'PAV.': ['#dcfce7','#166534'],
-    'REST.': ['#fef3c7','#92400e'], 'REC. FUNC.': ['#f3e8ff','#6b21a8'],
-    'OUTROS': ['#f1f5f9','#334155']
-  };
-  const tKey = Object.keys(tipoColors).find(k => (obra.tipo||'').toUpperCase().includes(k.replace('.','').replace(' ',''))) || 'OUTROS';
-  const [bg, fg] = tipoColors[tKey] || ['#f1f5f9','#334155'];
+  const pct = parseFloat(String(obra.status_fisico||'').replace('%','')) || 0;
+  const pctColor = pct>=100?'#16a34a':pct>=60?'#2563eb':'#d97706';
 
-  const sitColor = obra.situacao === 'CONCLUÍDA' || obra.situacao === 'CONCLUÍDO' ? '#16a34a' : '#d97706';
-  const sitBg = obra.situacao === 'CONCLUÍDA' || obra.situacao === 'CONCLUÍDO' ? '#dcfce7' : '#fef3c7';
+  let bodyHTML = '<div class="obras-progress-wrap"><div class="obras-section-title">Andamento Físico</div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">' +
+    '<span style="font-size:12px;color:var(--text3)">Status físico</span>' +
+    '<span style="font-size:18px;font-weight:800;color:' + pctColor + ';font-family:Inter Tight,sans-serif;">' + (obra.status_fisico||'—') + '</span></div>' +
+    '<div class="obras-progress-bar"><div class="obras-progress-fill" style="width:' + pct + '%;background:' + pctColor + ';"></div></div></div>';
 
-  document.getElementById('obras-modal-badges').innerHTML = `
-    <span style="background:${bg};color:${fg};padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;margin-right:6px;">${obra.tipo || '—'}</span>
-    <span style="background:${sitBg};color:${sitColor};padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">✓ ${obra.situacao || '—'}</span>
-  `;
-
-  // Progresso
-  const pct = parseFloat(String(obra.status_fisico).replace('%','')) || 0;
-  const pctColor = pct >= 100 ? '#16a34a' : pct >= 60 ? '#2563eb' : '#d97706';
-
-  let bodyHTML = `
-    <div class="obras-progress-wrap">
-      <div class="obras-section-title">Andamento Físico</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <span style="font-size:12px;color:var(--text3)">Status físico</span>
-        <span style="font-size:18px;font-weight:800;color:${pctColor};font-family:'Inter Tight',sans-serif;">${obra.status_fisico || '—'}</span>
-      </div>
-      <div class="obras-progress-bar"><div class="obras-progress-fill" style="width:${pct}%;background:${pctColor};"></div></div>
-    </div>
-
-    <div class="obras-section-title">Dados Gerais</div>
-    <div class="obras-info-grid">
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Rodovia</div>
-        <div class="obras-info-value big">${obra.rodovia || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Extensão</div>
-        <div class="obras-info-value big">${obra.extensao ? obra.extensao + ' km' : '—'}</div>
-      </div>
-      <div class="obras-info-cell full">
-        <div class="obras-info-label">Município(s)</div>
-        <div class="obras-info-value">${obra.municipio || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Macrorregião</div>
-        <div class="obras-info-value">${obra.macrorregiao || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Distrito Operacional</div>
-        <div class="obras-info-value">${obra.distrito || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Tipo de Pavimento</div>
-        <div class="obras-info-value">${obra.tipo_pav || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Situação MAPP</div>
-        <div class="obras-info-value">${obra.sit_mapp || '—'}</div>
-      </div>
-    </div>
-
-    <div class="obras-section-title">Financeiro &amp; Contrato</div>
-    <div class="obras-info-grid">
-      <div class="obras-info-cell full">
-        <div class="obras-info-label">Valor do Contrato</div>
-        <div class="obras-info-value money">${obra.valor || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Nº do Contrato</div>
-        <div class="obras-info-value">${obra.contrato || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">MAPP</div>
-        <div class="obras-info-value">${obra.mapp || '—'}</div>
-      </div>
-      <div class="obras-info-cell full">
-        <div class="obras-info-label">Empresa Executora</div>
-        <div class="obras-info-value">${obra.empresa || '—'}</div>
-      </div>
-    </div>
-
-    <div class="obras-section-title">Cronograma</div>
-    <div class="obras-info-grid">
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Data de Início (O.S.)</div>
-        <div class="obras-info-value">${obra.data_inicio || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Data Final (Execução)</div>
-        <div class="obras-info-value">${obra.data_fim || '—'}</div>
-      </div>
-    </div>`;
-
-  if (obra.vigencia) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Vigência do Contrato</div><div class="obras-info-value">' + obra.vigencia + '</div></div>';
-  if (obra.previsao_conclusao) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Previsão de Conclusão</div><div class="obras-info-value">' + obra.previsao_conclusao + '</div></div>';
+  bodyHTML += '<div class="obras-section-title">Dados Gerais</div><div class="obras-info-grid">';
+  if (obra.rodovia) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Rodovia</div><div class="obras-info-value big">' + obra.rodovia + '</div></div>';
+  if (obra.extensao) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Extensão</div><div class="obras-info-value big">' + obra.extensao + ' km</div></div>';
+  const municipios = [obra.municipio1, obra.municipio2, obra.municipio3].filter(Boolean).join(', ');
+  if (municipios) bodyHTML += '<div class="obras-info-cell full"><div class="obras-info-label">Município(s)</div><div class="obras-info-value">' + municipios + '</div></div>';
+  const macros = [obra.macrorregiao1, obra.macrorregiao2].filter(Boolean).join(' / ');
+  if (macros) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Macrorregião</div><div class="obras-info-value">' + macros + '</div></div>';
+  if (obra.distrito) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Distrito Operacional</div><div class="obras-info-value">' + obra.distrito + '</div></div>';
+  if (obra.tipo_pav) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Tipo de Pavimento</div><div class="obras-info-value">' + obra.tipo_pav + '</div></div>';
+  if (obra.sit_mapp) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Situação MAPP</div><div class="obras-info-value">' + obra.sit_mapp + '</div></div>';
   bodyHTML += '</div>';
 
-  // ── Campos exclusivos de Obras em Andamento ──
-  if (obra.isAndamento) {
-    bodyHTML += `<div class="obras-section-title">📊 Situação Financeira</div>
-    <div class="obras-info-grid">
-      <div class="obras-info-cell full">
-        <div class="obras-info-label">Valor do Contrato</div>
-        <div class="obras-info-value money">${obra.valor || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Total Empenhado</div>
-        <div class="obras-info-value">${obra.total_empenhado || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Status Financeiro</div>
-        <div class="obras-info-value">${obra.status_financeiro || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Saldo do Contrato</div>
-        <div class="obras-info-value">${obra.saldo_contrato || '—'}</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Previsão 2025</div>
-        <div class="obras-info-value">${obra.previsao_2025 || '—'}</div>
-      </div>
-    </div>`;
+  bodyHTML += '<div class="obras-section-title">Financeiro & Contrato</div><div class="obras-info-grid">';
+  if (obra.valor) bodyHTML += '<div class="obras-info-cell full"><div class="obras-info-label">Valor do Contrato</div><div class="obras-info-value money">' + obra.valor + '</div></div>';
+  if (obra.total_empenhado) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Total Empenhado</div><div class="obras-info-value">' + obra.total_empenhado + '</div></div>';
+  if (obra.status_financeiro) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Status Financeiro</div><div class="obras-info-value">' + obra.status_financeiro + '</div></div>';
+  if (obra.contrato) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Nº do Contrato</div><div class="obras-info-value">' + obra.contrato + '</div></div>';
+  if (obra.mapp) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">MAPP</div><div class="obras-info-value">' + obra.mapp + '</div></div>';
+  if (obra.empresa) bodyHTML += '<div class="obras-info-cell full"><div class="obras-info-label">Empresa Executora</div><div class="obras-info-value">' + obra.empresa + '</div></div>';
+  if (obra.fiscal) bodyHTML += '<div class="obras-info-cell full"><div class="obras-info-label">Fiscal</div><div class="obras-info-value">' + obra.fiscal + '</div></div>';
+  bodyHTML += '</div>';
 
-    if (obra.empregos_dir || obra.empregos_ind) {
-      bodyHTML += `<div class="obras-section-title">👷 Empregos Gerados</div>
-      <div class="obras-info-grid">
-        <div class="obras-info-cell">
-          <div class="obras-info-label">Empregos Diretos</div>
-          <div class="obras-info-value big">${obra.empregos_dir || '—'}</div>
-        </div>
-        <div class="obras-info-cell">
-          <div class="obras-info-label">Empregos Indiretos</div>
-          <div class="obras-info-value big">${obra.empregos_ind || '—'}</div>
-        </div>
-      </div>`;
-    }
+  bodyHTML += '<div class="obras-section-title">Cronograma</div><div class="obras-info-grid">';
+  if (obra.data_inicio) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Data de Início</div><div class="obras-info-value">' + obra.data_inicio + '</div></div>';
+  if (obra.data_fim) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Data Final</div><div class="obras-info-value">' + obra.data_fim + '</div></div>';
+  if (obra.vigencia) bodyHTML += '<div class="obras-info-cell"><div class="obras-info-label">Vigência</div><div class="obras-info-value">' + obra.vigencia + '</div></div>';
+  bodyHTML += '</div>';
 
-    if (obra.fiscal) {
-      bodyHTML += `<div class="obras-section-title">🔍 Fiscal da Obra</div>
-      <div class="obras-info-grid">
-        <div class="obras-info-cell full">
-          <div class="obras-info-label">Responsável Técnico</div>
-          <div class="obras-info-value">${obra.fiscal}</div>
-        </div>
-      </div>`;
-    }
-
-    if (obra.interferencia) {
-      bodyHTML += `<div class="obras-section-title">⚠️ Interferências</div>
-      <div class="obras-obs-box" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">⚠️ ${obra.interferencia}</div>`;
-    }
-  } // fecha if(obra.isAndamento)
-
-  if (obra.coordLat && obra.coordLng) {
-    bodyHTML += `<div class="obras-section-title">📍 Localização Pontual</div>
-    <div class="obras-info-grid">
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Latitude</div>
-        <div class="obras-info-value">${obra.coordLat.toFixed(6)}°</div>
-      </div>
-      <div class="obras-info-cell">
-        <div class="obras-info-label">Longitude</div>
-        <div class="obras-info-value">${obra.coordLng.toFixed(6)}°</div>
-      </div>
-      <div class="obras-info-cell full">
-        <div class="obras-info-label">Ver no mapa</div>
-        <div class="obras-info-value"><a href="https://www.google.com/maps?q=${obra.coordLat},${obra.coordLng}" target="_blank" style="color:var(--teal);font-weight:700;text-decoration:none;">🗺️ Abrir no Google Maps ↗</a></div>
-      </div>
-    </div>`;
-  } else if (obra.sres && obra.sres.length > 0) {
-    const nSeg = obra.sres.length;
+  if (obra.sres && obra.sres.length > 0) {
     const sreHTML = obra.sres.map(s => '<span class="obras-sre-tag" onclick="destacarSRE(\'' + s + '\')" title="Destacar no mapa">' + s + '</span>').join('');
-    bodyHTML += '<div class="obras-section-title">Trechos (SREs) — ' + nSeg + ' segmento' + (nSeg > 1 ? 's' : '') + '</div><div class="obras-sre-list">' + sreHTML + '</div>';
+    bodyHTML += '<div class="obras-section-title">Trechos (SREs) — ' + obra.sres.length + ' segmento' + (obra.sres.length>1?'s':'') + '</div><div class="obras-sre-list">' + sreHTML + '</div>';
+  } else if (obra.cidades && obra.cidades.length > 0) {
+    bodyHTML += '<div class="obras-section-title">Localização por Município</div><div class="obras-sre-list">' +
+      obra.cidades.map(c => '<span style="background:#fce7f3;color:#9d174d;border:1px solid #fbcfe8;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;">' + c + '</span>').join('') + '</div>';
   }
 
-  if (obra.observacoes) {
-    bodyHTML += `<div class="obras-section-title">Observações Técnicas</div>
-    <div class="obras-obs-box">📋 ${obra.observacoes}</div>`;
-  }
-
-  if (obra.evento) {
-    bodyHTML += `<div class="obras-section-title">Evento Político / Situação</div>
-    <div class="obras-evento-box">🏛️ ${obra.evento}</div>`;
-  }
+  if (obra.observacoes) bodyHTML += '<div class="obras-section-title">Observações</div><div class="obras-obs-box">📋 ' + obra.observacoes + '</div>';
+  if (obra.evento) bodyHTML += '<div class="obras-section-title">Evento Político</div><div class="obras-evento-box">🏛️ ' + obra.evento + '</div>';
 
   document.getElementById('obras-modal-body').innerHTML = bodyHTML;
   document.getElementById('obras-modal').classList.add('open');
