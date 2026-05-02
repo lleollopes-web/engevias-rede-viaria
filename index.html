@@ -3334,8 +3334,8 @@ function renderRecuperacao() {
       const interv = MATRIZ[`${lvcC}|${iriC}|${fwdC}`] || 'SEM DADOS';
       if (!stats3[interv]) stats3[interv]={count:0,ext:0};
       stats3[interv].count++; stats3[interv].ext+=extKm;
-      sresComDadoRec.add(name);
       if (recVisActive.has(3)) {
+        sresComDadoRec.add(name);
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.95,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
@@ -3353,8 +3353,8 @@ function renderRecuperacao() {
       const interv = MATRIZ_SEM_FWD[`${lvcC}|${iriC}`] || 'SEM DADOS';
       if (!stats2[interv]) stats2[interv]={count:0,ext:0};
       stats2[interv].count++; stats2[interv].ext+=extKm;
-      sresComDadoRec.add(name);
       if (recVisActive.has(2)) {
+        sresComDadoRec.add(name);
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.85,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
@@ -3372,8 +3372,8 @@ function renderRecuperacao() {
       const interv = MATRIZ_SO_LVC[lvcC] || 'SEM DADOS';
       if (!stats1[interv]) stats1[interv]={count:0,ext:0};
       stats1[interv].count++; stats1[interv].ext+=extKm;
-      sresComDadoRec.add(name);
       if (recVisActive.has(1)) {
+        sresComDadoRec.add(name);
         const col = REC_COLORS[interv]||'#94a3b8';
         const ln = L.polyline(coords,{color:col,weight:4,opacity:0.7,smoothFactor:1});
         ln.bindTooltip(`<b>${feat.properties.rodovia} — ${name}</b><br>`+
