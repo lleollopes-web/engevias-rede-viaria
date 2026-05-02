@@ -3952,8 +3952,14 @@ async function carregarObrasXLSX() {
         if (/^\d/.test(v)) sres.push(v);
         else cidades.push(v.toUpperCase().trim());
       });
+      // Inferir setor quando vazio (obras concluídas podem ter col B vazia)
+      const tiposRodovias = ['DUPLICAÇÃO','PAVIMENTAÇÃO','RESTAURAÇÃO','CONSERVA RODOVIÁRIA','RECUPERAÇÃO FUNCIONAL'];
+      const setorRaw = clean(row[1]);
+      const tipoRaw = clean(row[4]);
+      const setorInferido = setorRaw || (tiposRodovias.includes(tipoRaw) ? 'RODOVIAS' : tipoRaw ? 'EDIFICAÇÕES' : '');
+
       OBRAS_DATA_LIST.push({
-        num: clean(row[3]), origem: clean(row[0]), setor: clean(row[1]),
+        num: clean(row[3]), origem: clean(row[0]), setor: setorInferido,
         demandante: clean(row[2]), tipo: clean(row[4]), status: clean(row[5]),
         rodovia: clean(row[6]), descricao: clean(row[7]), fiscal: clean(row[8]),
         extensao: clean(row[9]), municipio1: clean(row[10]), municipio2: clean(row[11]),
