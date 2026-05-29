@@ -2531,8 +2531,8 @@ function onMapMouseMove(e) {
 
   const kmRelativo = kmAtual - kmIni; // km desde o início deste segmento (começa em 0)
   document.getElementById('kt-road').textContent = p.rodovia || '';
-  document.getElementById('kt-km').textContent = 'km ' + kmAtual.toFixed(3).replace('.', ',');
-  document.getElementById('kt-km-seg').textContent = '↳ km do segmento: ' + kmRelativo.toFixed(3).replace('.', ',');
+  document.getElementById('kt-km').textContent = 'km ' + kmAtual.toFixed(3).replace('.', ',') + '  —  ' + kmRelativo.toFixed(3).replace('.', ',');
+  document.getElementById('kt-km-seg').textContent = '';
   document.getElementById('kt-seg').textContent = p.name + '  ·  ' + (p.desc_ini||'') + ' → ' + (p.desc_fim||'');
 
   // Posicionar tooltip próximo ao cursor
