@@ -1577,7 +1577,7 @@ function openObrasModal(obra) {
   if(obra.vigencia) b+='<div class="obras-info-cell"><div class="obras-info-label">Vigência</div><div class="obras-info-value">'+obra.vigencia+'</div></div>';
   b+='</div>';
   if(obra.sres&&obra.sres.length>0) {
-    const sreH=obra.sres.map(s=>'<span class="obras-sre-tag" onclick="destacarSRE(''+s+'')">'+s+'</span>').join('');
+    const sreH=obra.sres.map(s=>'<span class="obras-sre-tag" onclick="destacarSRE(\''+s+'\')">'+s+'</span>').join('');
     b+='<div class="obras-section-title">Trechos (SREs) — '+obra.sres.length+' segmento'+(obra.sres.length>1?'s':'')+'</div><div class="obras-sre-list">'+sreH+'</div>';
   } else if(obra.cidades&&obra.cidades.length>0) {
     b+='<div class="obras-section-title">Localização por Município</div><div class="obras-sre-list">'+
