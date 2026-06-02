@@ -1215,6 +1215,14 @@
 // ════════════════════════════════════════════════════
 let _coordPopupOpen = false;
 let _coordLat = 0, _coordLng = 0;
+let _clicouEmLinha = false;
+
+function marcarCliqueEmLinha(e) {
+  _clicouEmLinha = true;
+  if (e && e.originalEvent) {
+    L.DomEvent.stop(e.originalEvent);
+  }
+}
 
 function mostrarCoordPopup(lat, lng, mouseX, mouseY) {
   _coordLat = lat; _coordLng = lng;
@@ -1240,10 +1248,32 @@ function fecharCoordPopup() {
 
 function copiarCoordenadas() {
   const txt = _coordLat.toFixed(6) + ', ' + _coordLng.toFixed(6);
-  navigator.clipboard.writeText(txt).catch(() => {});
-  const btn = document.querySelector('.coord-copy-btn');
-  btn.textContent = '✓ Copiado!';
-  setTimeout(() => { btn.innerHTML = '📋 Copiar coordenadas'; }, 2000);
+
+  const confirmarCopia = () => {
+    const btn = document.querySelector('.coord-copy-btn');
+    if (!btn) return;
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => { btn.innerHTML = '📋 Copiar coordenadas'; }, 2000);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(confirmarCopia).catch(() => copiarCoordenadasFallback(txt, confirmarCopia));
+  } else {
+    copiarCoordenadasFallback(txt, confirmarCopia);
+  }
+}
+
+function copiarCoordenadasFallback(txt, callback) {
+  const ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch (err) {}
+  document.body.removeChild(ta);
+  if (typeof callback === 'function') callback();
 }
 
 document.addEventListener('keydown', e => { if (e.key==='Escape') fecharCoordPopup(); });
@@ -1439,7 +1469,7 @@ function renderObrasAtivos() {
         if(!feat||!feat.geometry) return;
         const coords=feat.geometry.coordinates.map(c=>[c[1],c[0]]);
         const line=L.polyline(coords,{color,weight:6,opacity:0.9,smoothFactor:1,interactive:true,bubblingMouseEvents:false,className:'obras-hit',pane:'obrasPane'});
-        line.on('click',(e)=>{L.DomEvent.stop(e);marcarCliqueEmLinha();fecharCoordPopup();openObrasModal(obra);});
+        line.on('click',(e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();openObrasModal(obra);});
         line.on('mouseover',function(){this.setStyle({weight:9,opacity:1});const el=this.getElement();if(el)el.style.cursor='pointer';});
         line.on('mouseout',function(){this.setStyle({weight:6,opacity:0.9});});
         line.addTo(obrasLayerGroup);
@@ -1481,7 +1511,7 @@ function _obrasDesenharPin(obra,color,lat,lng) {
     +'</svg>';
   const icon=L.divIcon({className:'',html:'<div style="cursor:pointer;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));transition:transform 0.15s;">'+tractor+'</div>',iconSize:[20,20],iconAnchor:[10,18]});
   const marker=L.marker([lat,lng],{icon});
-  marker.on('click',(e)=>{L.DomEvent.stop(e);marcarCliqueEmLinha();fecharCoordPopup();openObrasModal(obra);});
+  marker.on('click',(e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();openObrasModal(obra);});
   marker.on('mouseover',function(){const el=this.getElement().querySelector('div');if(el)el.style.transform='scale(1.3) translateY(-3px)';});
   marker.on('mouseout',function(){const el=this.getElement().querySelector('div');if(el)el.style.transform='scale(1)';});
   marker.addTo(obrasLayerGroup);
@@ -1650,42 +1680,40 @@ async function initApp() {
   layerGroup = L.layerGroup().addTo(map);
   map.on('mousemove', onMapMouseMove);
   map.on('mouseout', () => { document.getElementById('km-tooltip').style.display='none'; });
-  let _clicouEmLinha = false;
-  function marcarCliqueEmLinha() { _clicouEmLinha = true; }
-
   map.on('click', (e) => {
+    if (_clicouEmLinha) {
+      _clicouEmLinha = false;
+      return;
+    }
+
     removeKmPin();
+
     if (currentModo === 'jurisdicao') {
       document.getElementById('search-input').value = '';
       applyFilters();
-      setTimeout(() => {
-        if (!_clicouEmLinha) {
-          const cp = map.latLngToContainerPoint(e.latlng);
-          const mb = document.getElementById('map').getBoundingClientRect();
-          mostrarCoordPopup(e.latlng.lat, e.latlng.lng, mb.left + cp.x, mb.top + cp.y);
-        }
-        _clicouEmLinha = false;
-      }, 20);
-    } else if (currentModo === 'obras') {
-      fecharCoordPopup();
-      if (!_clicouEmLinha && _obrasRenderizadas.length > 0) {
-        const pt = e.latlng;
-        const zoom = map.getZoom();
-        const limiar = zoom>=12?300:zoom>=10?800:zoom>=8?2000:4000;
-        let melhorObra=null, melhorDist=Infinity;
-        _obrasRenderizadas.forEach(({obra,coords}) => {
-          for(let i=0;i<coords.length-1;i++){
-            const d=_distPtSegmento(pt,L.latLng(coords[i]),L.latLng(coords[i+1]));
-            if(d<melhorDist){melhorDist=d;melhorObra=obra;}
-          }
-        });
-        if(melhorDist<limiar&&melhorObra) openObrasModal(melhorObra);
-      }
-      _clicouEmLinha = false;
-    } else {
-      fecharCoordPopup();
-      _clicouEmLinha = false;
     }
+
+    if (currentModo === 'obras' && _obrasRenderizadas.length > 0) {
+      const pt = e.latlng;
+      const zoom = map.getZoom();
+      const limiar = zoom>=12?300:zoom>=10?800:zoom>=8?2000:4000;
+      let melhorObra=null, melhorDist=Infinity;
+      _obrasRenderizadas.forEach(({obra,coords}) => {
+        for(let i=0;i<coords.length-1;i++){
+          const d=_distPtSegmento(pt,L.latLng(coords[i]),L.latLng(coords[i+1]));
+          if(d<melhorDist){melhorDist=d;melhorObra=obra;}
+        }
+      });
+      if(melhorDist<limiar&&melhorObra) {
+        fecharCoordPopup();
+        openObrasModal(melhorObra);
+        return;
+      }
+    }
+
+    const cp = map.latLngToContainerPoint(e.latlng);
+    const mb = document.getElementById('map').getBoundingClientRect();
+    mostrarCoordPopup(e.latlng.lat, e.latlng.lng, mb.left + cp.x, mb.top + cp.y);
   });
 
   setTimeout(() => { map.invalidateSize(); }, 200);
@@ -1773,7 +1801,7 @@ function renderMap(features) {
     hit._kmFeature = f; // referência para o KM real-time
     hit._origColor  = cfg.color;
     hit._origWeight = cfg.width + 4;
-    hit.on('click', ()=>showInfo(p));
+    hit.on('click', (e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();showInfo(p);});
     hit.on('mouseover', function(){
       line.setStyle({weight:cfg.width+2, opacity:1});
       if (!isMobile) this.getElement() && (this.getElement().style.cursor='pointer');
@@ -1830,6 +1858,7 @@ function updateStats(vis) {
 }
 
 function showInfo(p) {
+  fecharCoordPopup();
   const cfg=SITUACAO_CONFIG[p.situacao]||SITUACAO_CONFIG.PAV;
   const jcfg=getLineStyle(p);
   document.getElementById('info-title').textContent=p.rodovia||'—';
@@ -1998,7 +2027,9 @@ function iriSelectUltimaAtualizacao() {
       const line = L.polyline(f.geometry.coordinates.map(c=>[c[1],c[0]]),
         {color, weight:3, opacity:0.9, smoothFactor:1});
       line.bindTooltip('<b>'+trecho+'</b> — '+f.properties.condicao+' | IRI: '+f.properties.valor, {sticky:true});
-      line.on('click', () => {
+      line.on('click', (e) => {
+        marcarCliqueEmLinha(e);
+        fecharCoordPopup();
         const p = f.properties;
         document.getElementById('info-title').textContent = trecho;
         document.getElementById('info-id').textContent = trecho;
@@ -2631,7 +2662,9 @@ function fwdSelectUltimaAtualizacao() {
 
         const line = L.polyline(subCoords, {color, weight:5, opacity:0.95, smoothFactor:1});
         line.bindTooltip(`<b>${trecho}</b> — ${p.condicao} | D0: ${p.d0} µm`, {sticky:true});
-        line.on('click', () => {
+        line.on('click', (e) => {
+          marcarCliqueEmLinha(e);
+          fecharCoordPopup();
           document.getElementById('info-title').textContent = trecho;
           document.getElementById('info-id').textContent = trecho;
           document.getElementById('info-content').innerHTML = `
@@ -3424,7 +3457,7 @@ function renderRecuperacao() {
           `<span style="font-size:10px;color:#7dd3f0">🔵 Alta Confiabilidade</span><br>`+
           `LVC ${lvcAno}:<b>${lvcC}</b> | IRI ${iriAno}:<b>${iriC}</b> | FWD ${fwdAno}:<b>${fwdC}</b><br>`+
           `<span style="color:${col};font-weight:700">➜ ${REC_LABELS[interv]}</span>`,{sticky:true});
-        ln.on('click',()=>showRecInfo(feat,name,lvcC,iriC,fwdC,lvcAno,iriAno,fwdAno,interv,[],'Alta Confiabilidade'));
+        ln.on('click',(e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();showRecInfo(feat,name,lvcC,iriC,fwdC,lvcAno,iriAno,fwdAno,interv,[],'Alta Confiabilidade');});
         ln.addTo(recLayerGroup);
       }
       return;
@@ -3442,7 +3475,7 @@ function renderRecuperacao() {
           `<span style="font-size:10px;color:#fbbf24">🟡 Média Confiabilidade</span><br>`+
           `LVC ${lvcAno}:<b>${lvcC}</b> | IRI ${iriAno}:<b>${iriC}</b><br>`+
           `<span style="color:${col};font-weight:700">➜ ${REC_LABELS[interv]}</span>`,{sticky:true});
-        ln.on('click',()=>showRecInfo(feat,name,lvcC,iriC,null,lvcAno,iriAno,null,interv,['FWD'],'Média Confiabilidade'));
+        ln.on('click',(e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();showRecInfo(feat,name,lvcC,iriC,null,lvcAno,iriAno,null,interv,['FWD'],'Média Confiabilidade');});
         ln.addTo(recLayerGroup);
       }
       return;
@@ -3460,7 +3493,7 @@ function renderRecuperacao() {
           `<span style="font-size:10px;color:#f87171">🔴 Baixa Confiabilidade</span><br>`+
           `LVC ${lvcAno}:<b>${lvcC}</b><br>`+
           `<span style="color:${col};font-weight:700">➜ ${REC_LABELS[interv]}</span>`,{sticky:true});
-        ln.on('click',()=>showRecInfo(feat,name,lvcC,null,null,lvcAno,null,null,interv,['IRI','FWD'],'Baixa Confiabilidade'));
+        ln.on('click',(e)=>{marcarCliqueEmLinha(e);fecharCoordPopup();showRecInfo(feat,name,lvcC,null,null,lvcAno,null,null,interv,['IRI','FWD'],'Baixa Confiabilidade');});
         ln.addTo(recLayerGroup);
       }
       return;
