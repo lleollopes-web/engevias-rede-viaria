@@ -680,6 +680,36 @@
   * { scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 
   #obras-panel { display:none; flex-direction:column; overflow-y:auto; flex:1; }
+
+  /* ===== POPUP COORDENADAS ===== */
+  #coord-popup {
+    display:none; position:fixed; z-index:2500;
+    background:#1a2940; color:#fff;
+    border-radius:12px; padding:14px 16px;
+    font-family:'Inter',sans-serif; font-size:13px;
+    box-shadow:0 6px 24px rgba(0,0,0,0.4);
+    border:1.5px solid rgba(30,127,160,0.5);
+    min-width:220px;
+  }
+  #coord-popup.visible { display:block; }
+  .coord-popup-title {
+    font-size:11px; font-weight:700; letter-spacing:0.8px;
+    text-transform:uppercase; color:#7dd3f0; margin-bottom:10px;
+  }
+  .coord-row {
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:6px; gap:12px;
+  }
+  .coord-label { font-size:11px; color:#94a3b8; font-weight:500; }
+  .coord-value { font-size:13px; font-weight:700; color:#fff; font-family:'Inter Tight',sans-serif; letter-spacing:0.3px; }
+  .coord-copy-btn {
+    width:100%; margin-top:10px; padding:8px 0;
+    background:rgba(30,127,160,0.25); border:1px solid rgba(30,127,160,0.5);
+    border-radius:8px; color:#7dd3f0; font-family:'Inter',sans-serif;
+    font-size:12px; font-weight:600; cursor:pointer;
+    transition:background 0.15s;
+  }
+  .coord-copy-btn:hover { background:rgba(30,127,160,0.45); color:#fff; }
 </style>
 </head>
 <body>
@@ -1178,7 +1208,8 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
 // ════════════════════════════════════════════════════
 // POPUP DE COORDENADAS
 // ════════════════════════════════════════════════════
@@ -3717,6 +3748,9 @@ function setModo(modo) {
   document.getElementById('map-watermark').classList.remove('active');
   closeDiagram();
   closeInfo();
+  // Fechar dropdowns de filtro abertos
+  document.querySelectorAll('.mf-dropdown').forEach(d=>d.classList.remove('open'));
+  document.querySelectorAll('.mf-trigger').forEach(t=>t.classList.remove('open'));
 
   if (modo === 'iri') {
     document.getElementById('iri-panel').classList.add('active');
