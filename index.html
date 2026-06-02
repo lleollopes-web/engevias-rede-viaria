@@ -1242,7 +1242,9 @@ function mostrarCoordPopup(lat, lng, mouseX, mouseY) {
 }
 
 function fecharCoordPopup() {
-  document.getElementById('coord-popup').classList.remove('visible');
+  const el = document.getElementById('coord-popup');
+  if (el) el.classList.remove('visible');
+  if (typeof map !== 'undefined' && map && map.closePopup) map.closePopup();
   _coordPopupOpen = false;
 }
 
@@ -1274,6 +1276,22 @@ function copiarCoordenadasFallback(txt, callback) {
   try { document.execCommand('copy'); } catch (err) {}
   document.body.removeChild(ta);
   if (typeof callback === 'function') callback();
+}
+
+let _coordPopupTextoAtual = '';
+function copiarCoordenadasMapa(btn) {
+  const txt = _coordPopupTextoAtual;
+  const ok = () => {
+    if (btn) {
+      btn.textContent = '✓ Copiado!';
+      setTimeout(() => { btn.textContent = '📋 Copiar coordenadas'; }, 1800);
+    }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(txt).then(ok).catch(() => copiarCoordenadasFallback(txt, ok));
+  } else {
+    copiarCoordenadasFallback(txt, ok);
+  }
 }
 
 document.addEventListener('keydown', e => { if (e.key==='Escape') fecharCoordPopup(); });
@@ -1686,11 +1704,12 @@ async function initApp() {
       return;
     }
 
-    removeKmPin();
+    if (typeof removeKmPin === 'function') removeKmPin();
 
     if (currentModo === 'jurisdicao') {
-      document.getElementById('search-input').value = '';
-      applyFilters();
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) searchInput.value = '';
+      if (typeof applyFilters === 'function') applyFilters();
     }
 
     if (currentModo === 'obras' && _obrasRenderizadas.length > 0) {
@@ -1711,9 +1730,24 @@ async function initApp() {
       }
     }
 
-    const cp = map.latLngToContainerPoint(e.latlng);
-    const mb = document.getElementById('map').getBoundingClientRect();
-    mostrarCoordPopup(e.latlng.lat, e.latlng.lng, mb.left + cp.x, mb.top + cp.y);
+    const lat = Number(e.latlng.lat).toFixed(6);
+    const lng = Number(e.latlng.lng).toFixed(6);
+    _coordLat = e.latlng.lat;
+    _coordLng = e.latlng.lng;
+    _coordPopupTextoAtual = lat + ', ' + lng;
+
+    const html = `
+      <div style="font-family:Inter,sans-serif;min-width:210px;">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:#1e7fa0;margin-bottom:10px;">📍 Coordenadas do ponto</div>
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;"><span style="color:#64748b;">Latitude</span><b>${lat}</b></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;"><span style="color:#64748b;">Longitude</span><b>${lng}</b></div>
+        <button type="button" onclick="copiarCoordenadasMapa(this)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #1e7fa0;background:#e8f4f8;color:#165f78;font-weight:700;cursor:pointer;">📋 Copiar coordenadas</button>
+      </div>`;
+
+    L.popup({ closeButton:true, autoPan:true, className:'coord-leaflet-popup' })
+      .setLatLng(e.latlng)
+      .setContent(html)
+      .openOn(map);
   });
 
   setTimeout(() => { map.invalidateSize(); }, 200);
